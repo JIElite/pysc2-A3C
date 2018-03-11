@@ -5,6 +5,12 @@ I implemented a A3C agent by using pytorch to play Starcraft minigame, currently
 ## Dependency
 - [Pytorch 0.3.1](http://pytorch.org/)
 - [Pysc2](https://github.com/deepmind/pysc2)
+- [absl-py](https://pypi.python.org/pypi/absl-py)
+
+## Execution
+```
+python main.py
+```
 
 ## Issue
 When I run 8 workers in parallel and put the models in GPU, the amount of GPU Memory usage for each worker is nearly 1200MB. How to reduce the memory usage?
