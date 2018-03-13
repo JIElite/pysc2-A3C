@@ -28,7 +28,7 @@ flags.DEFINE_integer('max_eps_length', 3000, "max length run for each episode")
 # Learning related settings
 flags.DEFINE_float("learning_rate", 5e-4, "Learning rate for training.")
 flags.DEFINE_float("gamma", 0.99, "Discount rate for future rewards.")
-flags.DEFINE_integer("num_of_workers", 8, "How many instances to run in parallel.")
+flags.DEFINE_integer("num_of_workers", 1, "How many instances to run in parallel.")
 flags.DEFINE_integer("n_steps", 16,  "How many steps do we compute the Return (TD)")
 flags.DEFINE_integer("seed", 5, "torch random seed")
 flags.DEFINE_float("tau", 1.0, "tau for GAE")
@@ -44,7 +44,7 @@ def main(argv):
     summary_queue = mp.Queue()
 
     # share model
-    shared_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
+    shared_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution))
     shared_model.share_memory()
     optimizer = SharedAdam(shared_model.parameters(), lr=FLAGS.learning_rate)
     optimizer.share_memory()

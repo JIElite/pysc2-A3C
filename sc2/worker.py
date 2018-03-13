@@ -42,7 +42,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
     env = create_pysc2_env(env_args)
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'], minimap_resolution=args['minimap_resolution'])
     with env:
-        local_model = FullyConv(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda()
+        local_model = FullyConv(screen_channels=8, screen_resolution=[args['screen_resolution']]*2)
 
         env.reset()
         state = env.step(actions=select_army)[0]
@@ -55,9 +55,10 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
             local_model.load_state_dict(shared_model.state_dict())
 
             # Reset n-step experience buffer
-            entropies = []
             critic_values = []
             spatial_policy_log_probs = []
+            obs = []
+            actions = []
             rewards = []
 
             # step forward n steps
@@ -65,16 +66,16 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                                                                ))).cuda()
+                                                                )), requires_grad=False)
                 spatial_action_prob, log_spatial_action_prob, value = local_model(screen_observation)
                 spatial_action = spatial_action_prob.multinomial()
-                spatial_entropy = -(log_spatial_action_prob * spatial_action_prob).sum(1)
                 selected_log_action_prob = log_spatial_action_prob.gather(1, spatial_action)
 
                 # record n-step experience
-                entropies.append(spatial_entropy)
                 spatial_policy_log_probs.append(selected_log_action_prob)
                 critic_values.append(value)
+                actions.append(spatial_action)
+                obs.append(screen_observation)
 
                 # Step
                 action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
@@ -99,29 +100,31 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
-                                                            ))).cuda()
+                                                            )))
                 _, _, value = local_model(screen_observation)
                 R_t = value.data
 
 
-            R_var = Variable(R_t).cuda()
+            optimizer.zero_grad()
+            R_var = Variable(R_t, requires_grad=False)
             critic_values.append(R_var)
-            policy_loss = 0.
-            value_loss = 0.
-            gae_ts = torch.zeros(1).cuda()
+            gae_ts = torch.zeros(1)
             for i in reversed(range(len(rewards))):
                 R_var = rewards[i] + args['gamma'] * R_var
-
-                advantage_var = R_var - critic_values[i]
-                value_loss += 0.5 * advantage_var.pow(2)
+                local_action_prob, local_log_action_prob, critic_value = local_model(obs[i])
+                advantage_var = R_var - critic_value
+                value_loss = 0.5 * advantage_var.pow(2)
 
                 td_error = rewards[i] + args['gamma'] * critic_values[i+1].data - critic_values[i].data
                 gae_ts = gae_ts * args['gamma'] * args['tau'] + td_error
-                policy_loss += -(spatial_policy_log_probs[i] * Variable(gae_ts, requires_grad=False) + 0.05 *entropies[i])
+                # compute spatial log probs, entropy
+                specified_local_action_prob = local_log_action_prob.gather(1, actions[i])
+                entropy = -(local_log_action_prob * local_action_prob).sum(1)
+                policy_loss = -(specified_local_action_prob * Variable(gae_ts, requires_grad=False) + 0.05 *entropy)
 
-            optimizer.zero_grad()
-            total_loss = policy_loss + 0.5 * value_loss
-            total_loss.backward()
+                total_loss = value_loss + policy_loss
+                total_loss.backward(retain_graph=True)
+
             torch.nn.utils.clip_grad_norm(local_model.parameters(), 40)
             ensure_shared_grad(local_model, shared_model)
             optimizer.step()
