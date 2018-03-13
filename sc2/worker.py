@@ -56,7 +56,6 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
 
             # Reset n-step experience buffer
             critic_values = []
-            spatial_policy_log_probs = []
             obs = []
             actions = []
             rewards = []
@@ -67,12 +66,10 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                                                                 )), requires_grad=False)
-                spatial_action_prob, log_spatial_action_prob, value = local_model(screen_observation)
+                spatial_action_prob, _, value = local_model(screen_observation)
                 spatial_action = spatial_action_prob.multinomial()
-                selected_log_action_prob = log_spatial_action_prob.gather(1, spatial_action)
 
                 # record n-step experience
-                spatial_policy_log_probs.append(selected_log_action_prob)
                 critic_values.append(value)
                 actions.append(spatial_action)
                 obs.append(screen_observation)
@@ -117,6 +114,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
 
                 td_error = rewards[i] + args['gamma'] * critic_values[i+1].data - critic_values[i].data
                 gae_ts = gae_ts * args['gamma'] * args['tau'] + td_error
+
                 # compute spatial log probs, entropy
                 specified_local_action_prob = local_log_action_prob.gather(1, actions[i])
                 entropy = -(local_log_action_prob * local_action_prob).sum(1)
