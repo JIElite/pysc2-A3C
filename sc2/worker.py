@@ -66,8 +66,11 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                                                                 )), requires_grad=False)
+
                 spatial_action_prob, _, value = local_model(screen_observation)
                 spatial_action = spatial_action_prob.multinomial()
+                spatial_action = Variable(spatial_action.data, requires_grad=False)
+                value = Variable(value.data, requires_grad=False)
 
                 # record n-step experience
                 critic_values.append(value)
@@ -97,7 +100,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
-                                                            )))
+                                                            )), volatile=True)
                 _, _, value = local_model(screen_observation)
                 R_t = value.data
 
