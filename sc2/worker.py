@@ -42,7 +42,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
     env = create_pysc2_env(env_args)
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'], minimap_resolution=args['minimap_resolution'])
     with env:
-        local_model = FullyConv(screen_channels=8, screen_resolution=[args['screen_resolution']]*2)
+        local_model = FullyConv(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda()
 
         env.reset()
         state = env.step(actions=select_army)[0]
@@ -65,12 +65,12 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                                                                )), requires_grad=False)
+                                                                )), requires_grad=False).cuda()
 
                 spatial_action_prob, _, value = local_model(screen_observation)
                 spatial_action = spatial_action_prob.multinomial()
-                spatial_action = Variable(spatial_action.data, requires_grad=False)
-                value = Variable(value.data, requires_grad=False)
+                spatial_action = Variable(spatial_action.data, requires_grad=False).cuda()
+                value = Variable(value.data, requires_grad=False).cuda()
 
                 # record n-step experience
                 critic_values.append(value)
@@ -95,12 +95,12 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                     state = env.step(actions=select_army)[0]
                     break
 
-            R_t = torch.zeros(1)
+            R_t = torch.zeros(1).cuda()
             if not episode_done:
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
-                                                            )), volatile=True)
+                                                            )), volatile=True).cuda()
                 _, _, value = local_model(screen_observation)
                 R_t = value.data
 
@@ -108,7 +108,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
             optimizer.zero_grad()
             R_var = Variable(R_t, requires_grad=False)
             critic_values.append(R_var)
-            gae_ts = torch.zeros(1)
+            gae_ts = torch.zeros(1).cuda()
             for i in reversed(range(len(rewards))):
                 R_var = rewards[i] + args['gamma'] * R_var
                 local_action_prob, local_log_action_prob, critic_value = local_model(obs[i])
