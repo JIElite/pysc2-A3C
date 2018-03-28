@@ -63,7 +63,8 @@ def process_statistics(summary_queue, global_eps, global_avg_perf, global_recent
         print('frames: {}, eps score: {}'.format(frames, episode_reward))
 
         avg_perf = sum_of_eps_return / num_of_eps
-        if avg_perf > recently_best_avg:
+
+        if num_of_eps > 100 and avg_perf > recently_best_avg:
             recently_best_avg = avg_perf
 
         global_eps.value = num_of_eps
