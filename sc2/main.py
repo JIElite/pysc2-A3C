@@ -69,7 +69,6 @@ def main(argv):
     worker_list.append(evaluate_worker)
 
     for worker_id in range(FLAGS.num_of_workers):
-    # for worker_id in range(1):
         worker = mp.Process(target=worker_fn, args=(worker_id, FLAGS.flag_values_dict(), shared_model, optimizer, global_counter, summary_queue))
         worker.start()
         worker_list.append(worker)
