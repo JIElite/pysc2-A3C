@@ -3,6 +3,8 @@ NOTICE: We use current_step > evaluation_target_step and save_statistics_step
 to detect the timing for evaluation. By doing so, in main.py the settings for
 total game steps need to be little larger than evaluation timing step.
 """
+from collections import deque
+
 import pickle
 import torch
 
@@ -56,14 +58,30 @@ def process_statistics(summary_queue, global_eps, global_avg_perf, global_recent
     sum_of_eps_return = 0.0
     recently_best_avg = 0.0
 
+    eval_recent_counter = 0
+    avg_perf_queue = deque(maxlen=100)
+    recent_100_statistics = []
+
     while True:
         frames, episode_reward = summary_queue.get()
         sum_of_eps_return += episode_reward
         num_of_eps += 1
+        avg_perf_queue.append(episode_reward)
+        eval_recent_counter += 1
         print('frames: {}, eps score: {}'.format(frames, episode_reward))
 
-        avg_perf = sum_of_eps_return / num_of_eps
+        avg_queue_is_full = len(avg_perf_queue) == 100
+        if avg_queue_is_full and eval_recent_counter % 100 == 0:
+            recently_avg_performance = sum(avg_perf_queue) / 100
+            recent_100_statistics.append(recently_avg_performance)
 
+
+        if eval_recent_counter % 10000 == 0:
+            with open('recent_100_statistics.pkl', 'wb') as fout:
+                pickle.dump(recent_100_statistics, fout)
+
+
+        avg_perf = sum_of_eps_return / num_of_eps
         if num_of_eps > 100 and avg_perf > recently_best_avg:
             recently_best_avg = avg_perf
 
