@@ -17,6 +17,7 @@ from optimizer import ensure_shared_grad
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_ATTACK_SCREEN = actions.FUNCTIONS.Attack_screen.id
 select_army = [actions.FunctionCall(_SELECT_ARMY, [[0]])]
 
 # action parameters
@@ -30,6 +31,10 @@ _SCREEN_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 
 def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_queue):
     torch.manual_seed(args['seed'] + worker_id)
+
+    if worker_id == 1:
+        args['visualize'] = True
+
     env_args = {
         'map_name': args['map'],
         'agent_race': args['agent_race'],
@@ -77,7 +82,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 critic_values.append(value)
 
                 # Step
-                action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
+                action = game_inferface.build_action(_ATTACK_SCREEN, spatial_action[0].cpu())
                 state = env.step([action])[0]
                 reward = np.asscalar(state.reward)
                 rewards.append(reward)
@@ -129,4 +134,3 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
             if episode_done:
                 summary_queue.put((global_counter.value, episode_reward))
                 episode_reward = 0
-

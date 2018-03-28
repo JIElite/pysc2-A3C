@@ -15,7 +15,7 @@ from monitor import evaluator, process_statistics
 
 FLAGS = flags.FLAGS
 # Game related settings
-flags.DEFINE_string("map", "CollectMineralShardsSingle", "Name of a map to use.")
+flags.DEFINE_string("map", "DefeatBuilding", "Name of a map to use.")
 flags.DEFINE_integer("screen_resolution", 32, "Resolution for screen feature layers.")
 flags.DEFINE_integer("minimap_resolution", 32, "Resolution for minimap feature layers.")
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
