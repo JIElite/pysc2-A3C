@@ -17,6 +17,7 @@ from optimizer import ensure_shared_grad
 _NO_OP = actions.FUNCTIONS.no_op.id
 _SELECT_ARMY = actions.FUNCTIONS.select_army.id
 _MOVE_SCREEN = actions.FUNCTIONS.Move_screen.id
+_RIGHT_CLICK = actions.FUNCTIONS.Smart_screen.id
 select_army = [actions.FunctionCall(_SELECT_ARMY, [[0]])]
 
 # action parameters
@@ -45,7 +46,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
         local_model = FullyConv(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda()
 
         env.reset()
-        state = env.step(actions=select_army)[0]
+        state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
         episode_done = False
         episode_length = 0
         episode_reward = 0
@@ -59,6 +60,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
             critic_values = []
             spatial_policy_log_probs = []
             rewards = []
+
 
             # step forward n steps
             for step in range(args['n_steps']):
@@ -79,6 +81,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 # Step
                 action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
                 state = env.step([action])[0]
+
                 reward = np.asscalar(state.reward)
                 rewards.append(reward)
                 episode_reward += reward
@@ -91,7 +94,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 if episode_done:
                     episode_length = 0
                     env.reset()
-                    state = env.step(actions=select_army)[0]
+                    state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
                     break
 
             R_t = torch.zeros(1)
