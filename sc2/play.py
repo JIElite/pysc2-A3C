@@ -54,7 +54,7 @@ def main(argv):
     game_inferface = GameInterfaceHandler(screen_resolution=FLAGS.screen_resolution,
                                           minimap_resolution=FLAGS.minimap_resolution)
     action_id = _NO_OP
-    if FLAGS.map == 'CollectMineralSharedsSingle':
+    if FLAGS.map == 'CollectMineralShardsSingle':
         action_id = _MOVE_SCREEN
     elif FLAGS.map == 'DefeatBuilding3':
         action_id = _RIGHT_CLICK
@@ -63,7 +63,7 @@ def main(argv):
     model = FullyConv(screen_channels=8,
                              screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     # load model
-    model_destination = './models/task2_11058685/model_best'
+    model_destination = './models/backup_model_best'
     # model_destination = './models/task1_15625916/model_best'
     model.load_state_dict(torch.load(model_destination))
 
