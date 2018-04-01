@@ -10,7 +10,7 @@ import torch.multiprocessing as mp
 from model import FullyConv
 from optimizer import SharedAdam
 from worker import worker_fn
-from monitor import evaluator, process_statistics
+from monitor import evaluator
 
 
 FLAGS = flags.FLAGS
@@ -41,10 +41,6 @@ def main(argv):
     mp.set_start_method('spawn')
     maps.get(FLAGS.map)
     global_counter = mp.Value('i', 0)
-    global_eps = mp.Value('i', 0)
-    global_avg_perf = mp.Value('d', 0.0)
-    global_recently_best_avg = mp.Value('d', 0.0)
-
     summary_queue = mp.Queue()
 
     # share model
@@ -54,17 +50,7 @@ def main(argv):
     optimizer.share_memory()
 
     worker_list = []
-
-    # Evaluation-related worker
-    statistics_worker = mp.Process(target=process_statistics, args=(
-        summary_queue, global_eps, global_avg_perf, global_recently_best_avg
-    ))
-    statistics_worker.start()
-    worker_list.append(statistics_worker)
-
-    evaluate_worker = mp.Process(target=evaluator, args=(
-        shared_model, global_counter, global_eps, global_avg_perf, global_recently_best_avg
-    ))
+    evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, shared_model, global_counter))
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 
