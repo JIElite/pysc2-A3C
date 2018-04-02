@@ -55,7 +55,7 @@ class FullyConvSelecAction(nn.Module):
         nn.init.xavier_uniform(self.conv1.weight.data)
         nn.init.xavier_uniform(self.conv2.weight.data)
         nn.init.xavier_uniform(self.spatial_policy.weight.data)
-        nn.utils.weight_norm(self.v1)
+        nn.utils.weight_norm(self.non_spatial_branch)
         nn.utils.weight_norm(self.non_spatial_policy)
         nn.utils.weight_norm(self.value)
         self.non_spatial_branch.bias.data.fill_(0)
@@ -74,7 +74,7 @@ class FullyConvSelecAction(nn.Module):
         log_spatial_action_prob = nn.functional.log_softmax(policy_branch, dim=1)
 
         # non spatial policy branch
-        flatten_state_represenation = F.relu(self.non_spatial_branch(x.review(-1)))
+        flatten_state_represenation = F.relu(self.non_spatial_branch(x.view(-1)))
         non_spatial_policy = self.non_spatial_policy(flatten_state_represenation).unsqueeze(0)
         non_spatial_policy_prob = F.softmax(non_spatial_policy, dim=1)
         non_spatial_policy_log_prob = F.log_softmax(non_spatial_policy, dim=1)
