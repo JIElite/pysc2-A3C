@@ -30,12 +30,11 @@ class FullyConv(nn.Module):
         policy_branch = self.spatial_policy(x)
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         action_prob = nn.functional.softmax(policy_branch, dim=1)
-        log_action_prob = nn.functional.log_softmax(policy_branch, dim=1)
 
         # non spatial branch
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
         value = self.value(non_spatial_represenatation)
-        return action_prob, log_action_prob, value
+        return action_prob, value
 
 
 class FullyConvSelecAction(nn.Module):
