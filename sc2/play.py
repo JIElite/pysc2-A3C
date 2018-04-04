@@ -1,5 +1,6 @@
 from itertools import count
 import sys
+import time
 
 from absl import app, flags
 from pysc2.env import sc2_env
@@ -15,7 +16,7 @@ from model import FullyConv
 
 FLAGS = flags.FLAGS
 # Game related settings
-flags.DEFINE_string("map", "CollectMineralShardsSingle", "Name of a map to use.")
+flags.DEFINE_string("map", "CollectMineralShardsSingleExtended", "Name of a map to use.")
 flags.DEFINE_integer("screen_resolution", 32, "Resolution for screen feature layers.")
 flags.DEFINE_integer("minimap_resolution", 32, "Resolution for minimap feature layers.")
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
@@ -54,16 +55,16 @@ def main(argv):
     game_inferface = GameInterfaceHandler(screen_resolution=FLAGS.screen_resolution,
                                           minimap_resolution=FLAGS.minimap_resolution)
     action_id = _NO_OP
-    if FLAGS.map == 'CollectMineralShardsSingle':
+    if 'CollectMineralShardsSingle' in FLAGS.map:
         action_id = _MOVE_SCREEN
-    elif FLAGS.map == 'DefeatBuilding3':
+    elif 'DefeatBuilding' in FLAGS.map:
         action_id = _RIGHT_CLICK
 
     # agent's model
     model = FullyConv(screen_channels=8,
                              screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     # load model
-    model_destination = './models/backup_model_best'
+    model_destination = './models/model_best'
     # model_destination = './models/task1_15625916/model_best'
     model.load_state_dict(torch.load(model_destination))
 
@@ -79,12 +80,13 @@ def main(argv):
                     timesteps=state,
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                 ))).cuda()
-                spatial_action_prob, log_spatial_action_prob, value = model(screen_observation)
+                spatial_action_prob, value = model(screen_observation)
                 spatial_action = spatial_action_prob.multinomial()
 
                 # Step
                 action = game_inferface.build_action(action_id, spatial_action[0].cpu())
                 state = env.step([action])[0]
+                time.sleep(0.1)
 
                 reward = np.asscalar(state.reward)
                 episodic_reward += reward
