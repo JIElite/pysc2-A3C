@@ -22,3 +22,7 @@ class Buffer:
     def get_n_steps_data(self):
         return Transition(*zip(*self.memory))
 
+
+def freeze_layers(layer):
+    for param in layer.parameters():
+        param.requires_grad = False
