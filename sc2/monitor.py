@@ -9,7 +9,7 @@ import pickle
 import torch
 
 
-def evaluator(summary_queue, shared_model, global_counter):
+def evaluator(summary_queue, shared_model, global_counter, end_of_steps=1000000):
     '''
     Emit avg_perf and recently_best avg
     '''
@@ -29,6 +29,12 @@ def evaluator(summary_queue, shared_model, global_counter):
     evaluation_steps = 10000
 
     while True:
+        if global_counter.value >= end_of_steps - 3000:
+            torch.save(shared_model.state_dict(), './models/model_latest')
+            with open('statistics.pkl', 'wb') as fout:
+                pickle.dump(statistics, fout)
+            return
+
         frames, episode_reward = summary_queue.get()
         sum_of_eps_return += episode_reward
         num_of_eps += 1
@@ -64,7 +70,8 @@ def evaluator(summary_queue, shared_model, global_counter):
 
 
         # store statistics per 10000 episodes
-        if num_of_eps % 10000 == 0:
+        if num_of_eps % 500 == 0:
             with open('statistics.pkl', 'wb') as fout:
                 pickle.dump(statistics, fout)
+
 
