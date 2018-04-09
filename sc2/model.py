@@ -71,13 +71,11 @@ class FullyConvSelecAction(nn.Module):
         spatial_policy_branch = self.spatial_policy(x)
         policy_branch = spatial_policy_branch.view(spatial_policy_branch.shape[0], -1)
         spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
-        log_spatial_action_prob = nn.functional.log_softmax(policy_branch, dim=1)
 
         # non spatial policy branch
         flatten_state_represenation = F.relu(self.non_spatial_branch(x.view(-1)))
         non_spatial_policy = self.non_spatial_policy(flatten_state_represenation).unsqueeze(0)
         non_spatial_policy_prob = F.softmax(non_spatial_policy, dim=1)
-        non_spatial_policy_log_prob = F.log_softmax(non_spatial_policy, dim=1)
         value = self.value(flatten_state_represenation)
 
-        return non_spatial_policy_prob, non_spatial_policy_log_prob, spatial_action_prob, log_spatial_action_prob, value
+        return non_spatial_policy_prob, spatial_action_prob, value
