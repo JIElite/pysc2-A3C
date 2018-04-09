@@ -174,10 +174,11 @@ def worker_non_spatial_spatial(worker_id, args, shared_model, optimizer, global_
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                                                                 ))).cuda()
-                non_spatial_action_prob, non_spatial_action_log_prob, \
-                        spatial_action_prob, log_spatial_action_prob, value = local_model(screen_observation)
-
+                non_spatial_action_prob, spatial_action_prob, value = local_model(screen_observation)
+                non_spatial_action_log_prob = torch.log(non_spatial_action_prob)
                 non_spatial_action = non_spatial_action_prob.multinomial()
+
+                log_spatial_action_prob = torch.log(spatial_action_prob)
                 spatial_action = spatial_action_prob.multinomial()
 
                 non_spatial_entropy = -(non_spatial_action_log_prob * non_spatial_action_prob).sum(1)
@@ -194,7 +195,7 @@ def worker_non_spatial_spatial(worker_id, args, shared_model, optimizer, global_
                 critic_values.append(value)
 
 
-                action_id = int(non_spatial_action.data.cpu().numpy())
+                action_id = non_spatial_action.data.cpu().numpy()[0][0]
                 action_type = _NO_OP if action_id == 0 else _MOVE_SCREEN
 
                 # Step
@@ -222,7 +223,7 @@ def worker_non_spatial_spatial(worker_id, args, shared_model, optimizer, global_
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                                                             ))).cuda()
-                _, _, _, _, value = local_model(screen_observation)
+                _, _, value = local_model(screen_observation)
                 R_t = value.data
 
 
@@ -252,5 +253,9 @@ def worker_non_spatial_spatial(worker_id, args, shared_model, optimizer, global_
                 summary_queue.put((global_counter.value, episode_reward))
                 episode_reward = 0
 
+            del entropies
+            del critic_values
+            del policy_log_probs
+            del rewards
 
 
