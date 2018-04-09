@@ -10,6 +10,13 @@ def ensure_shared_grad(local_net, global_net):
         g_parameter._grad = l_parameter.grad
 
 
+def ensure_shared_grad_cpu(local_net, global_net):
+    for l_parameter, g_parameter in zip(local_net.parameters(), global_net.parameters()):
+        if g_parameter.grad is not None:
+            return
+        g_parameter._grad = l_parameter.grad.clone().cpu()
+
+
 class SharedAdam(torch.optim.Adam):
     """Implements Adam algorithm with shared states.
        This class was copied from ikostrikov/pytorch-a3c
