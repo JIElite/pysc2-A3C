@@ -9,7 +9,7 @@ import pickle
 import torch
 
 
-def evaluator(summary_queue, shared_model, global_counter, end_of_steps=1000000):
+def evaluator(summary_queue, shared_model, optimizer, global_counter, end_of_steps=1000000):
     '''
     Emit avg_perf and recently_best avg
     '''
@@ -31,6 +31,7 @@ def evaluator(summary_queue, shared_model, global_counter, end_of_steps=1000000)
     while True:
         if global_counter.value >= end_of_steps - 3000:
             torch.save(shared_model.state_dict(), './models/model_latest')
+            torch.save(optimizer.state_dict(), './models/optimizer_latest')
             with open('statistics.pkl', 'wb') as fout:
                 pickle.dump(statistics, fout)
             return
@@ -46,6 +47,7 @@ def evaluator(summary_queue, shared_model, global_counter, end_of_steps=1000000)
         if len(recent_perf_queue) > 20 and current_step > evaluation_steps:
             # update latest model
             torch.save(shared_model.state_dict(), './models/model_latest')
+            torch.save(optimizer.state_dict(), './models/optimizer_latest')
 
             # compute mean perf
             recent_100_mean_perf = sum(recent_perf_queue) / len(recent_perf_queue)
@@ -54,6 +56,7 @@ def evaluator(summary_queue, shared_model, global_counter, end_of_steps=1000000)
             if recent_100_mean_perf > recent_100_best_mean_perf:
                 recent_100_best_mean_perf = recent_100_mean_perf
                 torch.save(shared_model.state_dict(), './models/model_best')
+                torch.save(optimizer.state_dict(), './models/optimizer_best')
 
             if mean_perf > best_mean_perf:
                 best_mean_perf = mean_perf

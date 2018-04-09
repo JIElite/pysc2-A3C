@@ -72,7 +72,7 @@ def main(argv):
     optimizer.share_memory()
 
     worker_list = []
-    evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, shared_model,
+    evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, shared_model, optimizer,
                                                          global_counter, FLAGS.num_of_workers*FLAGS.worker_steps))
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
