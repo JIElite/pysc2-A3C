@@ -26,3 +26,7 @@ class Buffer:
 def freeze_layers(layer):
     for param in layer.parameters():
         param.requires_grad = False
+
+
+def count_parameters(model):
+    return sum(p.numel() for p in model.parameters() if p.requires_grad)
