@@ -47,23 +47,24 @@ def main(argv):
 
     # share model
     shared_model = FullyConvExtended(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
-    pretrained_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
-    pretrained_model.load_state_dict(torch.load('./models/task1_extended_10077037/model_best'))
+    pretrained_model = FullyConvExtended(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
+    pretrained_model.load_state_dict(torch.load('./models/model_latest'))
 
     shared_model.conv1.load_state_dict(pretrained_model.conv1.state_dict())
+    shared_model.conv2.load_state_dict(pretrained_model.conv2.state_dict())
     shared_model.spatial_policy.load_state_dict(pretrained_model.spatial_policy.state_dict())
     shared_model.non_spatial_branch.load_state_dict(pretrained_model.non_spatial_branch.state_dict())
     shared_model.value.load_state_dict(pretrained_model.value.state_dict())
 
     freeze_layers(shared_model.conv1)
+    freeze_layers(shared_model.conv2)
     freeze_layers(shared_model.spatial_policy)
     freeze_layers(shared_model.non_spatial_branch)
     freeze_layers(shared_model.value)
 
 
     shared_model.share_memory()
-    parameters = list(shared_model.conv2.parameters()) + list(shared_model.conv3.parameters())
-    optimizer = SharedAdam(parameters, lr=FLAGS.learning_rate)
+    optimizer = SharedAdam(shared_model.conv3.parameters(), lr=FLAGS.learning_rate)
     optimizer.share_memory()
 
     worker_list = []
