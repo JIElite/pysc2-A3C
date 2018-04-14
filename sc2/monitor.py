@@ -9,7 +9,8 @@ import pickle
 import torch
 
 
-def evaluator(summary_queue, shared_model, optimizer, global_counter, end_of_steps=1000000):
+def evaluator(summary_queue, shared_model, optimizer,
+              global_counter, end_of_steps=1000000, statistics_postfix=""):
     '''
     Emit avg_perf and recently_best avg
     '''
@@ -30,9 +31,9 @@ def evaluator(summary_queue, shared_model, optimizer, global_counter, end_of_ste
 
     while True:
         if global_counter.value >= end_of_steps - 3000:
-            torch.save(shared_model.state_dict(), './models/model_latest')
-            torch.save(optimizer.state_dict(), './models/optimizer_latest')
-            with open('statistics.pkl', 'wb') as fout:
+            torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
+            torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
+            with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
                 pickle.dump(statistics, fout)
             return
 
@@ -46,8 +47,8 @@ def evaluator(summary_queue, shared_model, optimizer, global_counter, end_of_ste
         current_step = global_counter.value
         if len(recent_perf_queue) > 20 and current_step > evaluation_steps:
             # update latest model
-            torch.save(shared_model.state_dict(), './models/model_latest')
-            torch.save(optimizer.state_dict(), './models/optimizer_latest')
+            torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
+            torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
 
             # compute mean perf
             recent_100_mean_perf = sum(recent_perf_queue) / len(recent_perf_queue)
@@ -55,8 +56,8 @@ def evaluator(summary_queue, shared_model, optimizer, global_counter, end_of_ste
 
             if recent_100_mean_perf > recent_100_best_mean_perf:
                 recent_100_best_mean_perf = recent_100_mean_perf
-                torch.save(shared_model.state_dict(), './models/model_best')
-                torch.save(optimizer.state_dict(), './models/optimizer_best')
+                torch.save(shared_model.state_dict(), './models/model_best' + statistics_postfix)
+                torch.save(optimizer.state_dict(), './models/optimizer_best' + statistics_postfix)
 
             if mean_perf > best_mean_perf:
                 best_mean_perf = mean_perf
@@ -73,8 +74,8 @@ def evaluator(summary_queue, shared_model, optimizer, global_counter, end_of_ste
 
 
         # store statistics per 10000 episodes
-        if num_of_eps % 500 == 0:
-            with open('statistics.pkl', 'wb') as fout:
+        if num_of_eps % 100 == 0:
+            with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
                 pickle.dump(statistics, fout)
 
 
