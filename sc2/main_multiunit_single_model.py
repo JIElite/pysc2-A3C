@@ -1,3 +1,8 @@
+'''
+usage:
+1. python main_multiunit_single_model
+2. python main_multiunit_single_model.py --multiple_gpu True --gpu 2 --num_of_workers 12
+'''
 import sys
 import os
 os.environ['OMP_NUM_THREADS']='1'
@@ -31,9 +36,8 @@ flags.DEFINE_integer("num_of_workers", 8, "How many instances to run in parallel
 flags.DEFINE_integer("n_steps", 8,  "How many steps do we compute the Return (TD)")
 flags.DEFINE_integer("seed", 5, "torch random seed")
 flags.DEFINE_float("tau", 1.0, "tau for GAE")
-flags.DEFINE_integer("gpu", 0, "gpu device")
-
-
+flags.DEFINE_boolean("multiple_gpu", False, "use multiple gpu or single gpu")
+flags.DEFINE_integer("gpu", 1, "gpu device")
 FLAGS(sys.argv)
 
 
@@ -45,8 +49,14 @@ def main(argv):
     summary_queue = mp.Queue()
 
     # share model
-    shared_model = FullyConvMultiUnitCollectBaseline(screen_channels=8, screen_resolution=(
-        FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
+    use_multiple_gpu = FLAGS.multiple_gpu
+    if use_multiple_gpu:
+        shared_model = FullyConvMultiUnitCollectBaseline(screen_channels=8, screen_resolution=(
+            FLAGS.screen_resolution, FLAGS.screen_resolution))
+    else:
+        shared_model = FullyConvMultiUnitCollectBaseline(screen_channels=8, screen_resolution=(
+            FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(0)
+
     shared_model.share_memory()
     optimizer = SharedAdam(shared_model.parameters(), lr=FLAGS.learning_rate)
     optimizer.share_memory()

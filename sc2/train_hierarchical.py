@@ -1,5 +1,4 @@
 import time
-import pprint
 
 import numpy as np
 import torch
@@ -12,7 +11,7 @@ from pysc2.lib import features
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
 from model import FullyConv, FullyConvMultiUnitCollectBaseline
-from optimizer import ensure_shared_grad
+from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
 
 
 torch.set_printoptions(threshold=5000)
@@ -183,9 +182,12 @@ def train_hierarchical_collect_baseline(
         env = create_pysc2_env(env_args)
         game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'],
                                               minimap_resolution=args['minimap_resolution'])
+
+        gpu_id = worker_id % args['gpu']
         with env:
             local_model = FullyConvMultiUnitCollectBaseline(
-                screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(args['gpu'])
+                screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(gpu_id)
+
 
             env.reset()
             state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
@@ -194,7 +196,7 @@ def train_hierarchical_collect_baseline(
             episode_reward = 0
 
             while True:
-                time.sleep(0.1)
+
                 # Sync the parameters with shared model
                 local_model.load_state_dict(shared_model.state_dict())
 
@@ -210,14 +212,14 @@ def train_hierarchical_collect_baseline(
                     screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                         timesteps=state,
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                    ))).cuda(args['gpu'])
+                    ))).cuda(gpu_id)
 
                     select_action_prob, spatial_action_prob, value = local_model(screen_observation)
 
                     # mask select action
                     selection_mask = torch.from_numpy(
                         (state.observation['screen'][_SCREEN_PLAYER_RELATIVE] == 1).astype('float32'))
-                    selection_mask = Variable(selection_mask.view(1, -1), requires_grad=False).cuda(args['gpu'])
+                    selection_mask = Variable(selection_mask.view(1, -1), requires_grad=False).cuda(gpu_id)
                     masked_select_action_prob = select_action_prob * selection_mask
                     masked_select_action_prob = masked_select_action_prob / masked_select_action_prob.sum()
                     # m = Categorical(masked_select_action_prob)
@@ -272,15 +274,15 @@ def train_hierarchical_collect_baseline(
                     screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                         timesteps=state,
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15]
-                    ))).cuda(args['gpu'])
+                    ))).cuda(gpu_id)
                     _, _, value = local_model(screen_observation)
                     R_t = value.data
 
-                R_var = Variable(R_t).cuda(args['gpu'])
+                R_var = Variable(R_t).cuda(gpu_id)
                 critic_values.append(R_var)
                 policy_loss = 0.
                 value_loss = 0.
-                gae_ts = torch.zeros(1).cuda(args['gpu'])
+                gae_ts = torch.zeros(1).cuda(gpu_id)
                 for i in reversed(range(len(rewards))):
                     R_var = rewards[i] + args['gamma'] * R_var
 
@@ -297,7 +299,12 @@ def train_hierarchical_collect_baseline(
                 total_loss = policy_loss + 0.5 * value_loss
                 total_loss.backward()
                 torch.nn.utils.clip_grad_norm(local_model.parameters(), 40)
-                ensure_shared_grad(local_model, shared_model)
+
+                if args['multiple_gpu']:
+                    ensure_shared_grad_cpu(local_model, shared_model)
+                else:
+                    ensure_shared_grad(local_model, shared_model)
+
                 optimizer.step()
 
                 if episode_done:
