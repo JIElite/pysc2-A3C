@@ -34,8 +34,12 @@ flags.DEFINE_integer("n_steps", 8,  "How many steps do we compute the Return (TD
 flags.DEFINE_integer("seed", 5, "torch random seed")
 flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_boolean("extend_model", False, "extend conv3 or not")
+flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_string("postfix", "", "postfix of training data")
 FLAGS(sys.argv)
+
+torch.cuda.set_device(FLAGS.gpu)
+print("CUDA device:", torch.cuda.current_device())
 
 
 def main(argv):
