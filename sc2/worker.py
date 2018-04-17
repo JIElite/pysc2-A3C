@@ -9,7 +9,7 @@ from pysc2.lib import features
 
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
-from model import FullyConv, FullyConvSelecAction
+from model import FullyConv, FullyConvExtended, FullyConvSelecAction
 from optimizer import ensure_shared_grad
 
 
@@ -43,7 +43,14 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
     env = create_pysc2_env(env_args)
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'], minimap_resolution=args['minimap_resolution'])
     with env:
-        local_model = FullyConv(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda()
+
+        if args['extend_model']:
+            network = FullyConvExtended
+        else:
+            network = FullyConv
+
+        local_model = network(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda()
+
 
         env.reset()
         state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
@@ -69,7 +76,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                                                                 ))).cuda()
                 spatial_action_prob, value = local_model(screen_observation)
-                log_spatial_action_prob = torch.log(spatial_action_prob)
+                log_spatial_action_prob = torch.log(torch.clamp(spatial_action_prob, min=1e-12))
                 spatial_action = spatial_action_prob.multinomial()
                 spatial_entropy = -(log_spatial_action_prob * spatial_action_prob).sum(1)
                 selected_log_action_prob = log_spatial_action_prob.gather(1, spatial_action)

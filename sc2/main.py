@@ -8,7 +8,7 @@ from pysc2.env import sc2_env
 import torch
 import torch.multiprocessing as mp
 
-from model import FullyConv
+from model import FullyConv, FullyConvExtended
 from optimizer import SharedAdam
 from worker import worker_fn
 from monitor import evaluator
@@ -23,7 +23,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
-flags.DEFINE_integer('worker_steps', 1260000, "steps run for each worker")
+flags.DEFINE_integer('worker_steps', 12600000, "steps run for each worker")
 flags.DEFINE_integer('max_eps_length', 5000, "max length run for each episode")
 
 # Learning related settings
@@ -33,7 +33,8 @@ flags.DEFINE_integer("num_of_workers", 8, "How many instances to run in parallel
 flags.DEFINE_integer("n_steps", 8,  "How many steps do we compute the Return (TD)")
 flags.DEFINE_integer("seed", 5, "torch random seed")
 flags.DEFINE_float("tau", 1.0, "tau for GAE")
-
+flags.DEFINE_boolean("extend_model", False, "extend conv3 or not")
+flags.DEFINE_string("postfix", "", "postfix of training data")
 FLAGS(sys.argv)
 
 
@@ -45,14 +46,20 @@ def main(argv):
     summary_queue = mp.Queue()
 
     # share model
-    shared_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
+    if FLAGS.extend_model:
+        model = FullyConvExtended
+    else:
+        model = FullyConv
+
+    shared_model = model(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     shared_model.share_memory()
     optimizer = SharedAdam(shared_model.parameters(), lr=FLAGS.learning_rate)
     optimizer.share_memory()
 
     worker_list = []
     evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, shared_model, optimizer,
-                                                         global_counter, FLAGS.num_of_workers*FLAGS.worker_steps))
+                                                         global_counter, FLAGS.num_of_workers*FLAGS.worker_steps,
+                                                         FLAGS.postfix))
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 
