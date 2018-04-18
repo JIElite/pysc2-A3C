@@ -319,3 +319,4 @@ def train_hierarchical_collect_baseline(
 
 def train_conjunction_collect(
     worker_id, args, shared_model, optimizer, global_counter, summary_queue):
+    pass
