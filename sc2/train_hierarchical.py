@@ -10,7 +10,7 @@ from pysc2.lib import features
 
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
-from model import FullyConv, FullyConvMultiUnitCollectBaseline
+from model import FullyConv, FullyConvMultiUnitCollectBaseline, FullyConvMultiUnitCollectBaselineExtended
 from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
 
 
@@ -42,6 +42,7 @@ def train_master(worker_id, args, shared_model, optimizer, global_counter, summa
         'minimap_size_px': [args['minimap_resolution']] * 2,
         'visualize': args['visualize'],
     }
+
     env = create_pysc2_env(env_args)
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'], minimap_resolution=args['minimap_resolution'])
     with env:
@@ -183,9 +184,14 @@ def train_hierarchical_collect_baseline(
         game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'],
                                               minimap_resolution=args['minimap_resolution'])
 
-        gpu_id = worker_id % args['gpu']
+        if args['extend_model']:
+            model = FullyConvMultiUnitCollectBaselineExtended
+        else:
+            model = FullyConvMultiUnitCollectBaseline
+
+        gpu_id = args['gpu']
         with env:
-            local_model = FullyConvMultiUnitCollectBaseline(
+            local_model = model(
                 screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(gpu_id)
 
 
@@ -220,20 +226,17 @@ def train_hierarchical_collect_baseline(
                     selection_mask = torch.from_numpy(
                         (state.observation['screen'][_SCREEN_PLAYER_RELATIVE] == 1).astype('float32'))
                     selection_mask = Variable(selection_mask.view(1, -1), requires_grad=False).cuda(gpu_id)
+
                     masked_select_action_prob = select_action_prob * selection_mask
                     masked_select_action_prob = masked_select_action_prob / masked_select_action_prob.sum()
-                    # m = Categorical(masked_select_action_prob)
-                    # select_unit_action = m.sample().unsqueeze(0)
                     select_unit_action = masked_select_action_prob.multinomial()
                     select_action = game_inferface.build_action(_SELECT_POINT, select_unit_action[0].cpu())
 
                     spatial_action = spatial_action_prob.multinomial()
                     move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
 
-                    log_select_action_prob = torch.log(
-                        torch.clamp(masked_select_action_prob, min=1e-12))
-                    log_spatial_action_prob = torch.log(
-                        torch.clamp(spatial_action_prob, min=1e-12))
+                    log_select_action_prob = torch.log(torch.clamp(masked_select_action_prob, min=1e-15))
+                    log_spatial_action_prob = torch.log(spatial_action_prob)
 
                     # compute entropy?
                     select_entropy = - (log_select_action_prob * masked_select_action_prob).sum(1)
@@ -307,6 +310,12 @@ def train_hierarchical_collect_baseline(
 
                 optimizer.step()
 
+
                 if episode_done:
                     summary_queue.put((global_counter.value, episode_reward))
                     episode_reward = 0
+
+
+
+def train_conjunction_collect(
+    worker_id, args, shared_model, optimizer, global_counter, summary_queue):
