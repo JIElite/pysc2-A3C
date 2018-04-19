@@ -1,3 +1,4 @@
+import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
@@ -159,6 +160,54 @@ class FullyConvMultiUnitCollectBaselineExtended(nn.Module):
         value = self.value(non_spatial_represenatation)
 
         return select_unit_prob, spatial_action_prob, value
+
+
+class Grafting_MultiunitCollect(nn.Module):
+    pass
+
+
+class ExtendConv3Grafting_MultiunitCollect(nn.Module):
+    def __init__(self, screen_channels, screen_resolution):
+        # grafting
+        super(ExtendConv3Grafting_MultiunitCollect, self).__init__()
+        self.conv_master = nn.Conv2d(screen_channels, 16, kernel_size=(5, 5), stride=1, padding=2)
+        self.conv_sub = nn.Conv2d(screen_channels, 16, kernel_size=(5, 5), stride=1, padding=2)
+
+        # train from scratch
+        self.conv2 = nn.Conv2d(32, 32, kernel_size=(3, 3), stride=1, padding=1)
+        self.conv3 = nn.Conv2d(32, 32, kernel_size=(3, 3), stride=1, padding=1)
+
+        # grafting
+        self.spatial_policy = nn.Conv2d(32, 1, kernel_size=(1, 1))
+        self.select_unit = nn.Conv2d(32, 1, kernel_size=(1, 1))
+
+        # grafting
+        self.non_spatial_branch = nn.Linear(screen_resolution[0] * screen_resolution[1] * 32, 256)
+        self.value = nn.Linear(256, 1)
+
+    def forward(self, x):
+        master_x = F.relu(self.conv_master(x))
+        sub_x = F.relu(self.conv_sub(x))
+
+        concat_feature_layers = torch.cat([master_x, sub_x], dim=1)
+        x = F.relu(self.conv2(concat_feature_layers))
+        x = F.relu(self.conv3(x))
+
+        select_unit_branch = self.select_unit(x)
+        select_unit_branch = select_unit_branch.view(select_unit_branch.shape[0], -1)
+        select_unit_prob =  nn.functional.softmax(select_unit_branch, dim=1)
+
+        # spatial policy branch
+        policy_branch = self.spatial_policy(x)
+        policy_branch = policy_branch.view(policy_branch.shape[0], -1)
+        spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
+
+        # non spatial branch
+        non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1)))  # flatten the state representation
+        value = self.value(non_spatial_represenatation)
+
+        return select_unit_prob, spatial_action_prob, value
+
 
 
 class FullyConvSelecAction(nn.Module):
