@@ -31,7 +31,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
-flags.DEFINE_integer('worker_steps', 10500000, "steps run for each worker")
+flags.DEFINE_integer('max_steps', 10500000, "steps run for each worker")
 flags.DEFINE_integer('max_eps_length', 5000, "max length run for each episode")
 
 # Learning related settings
@@ -58,7 +58,7 @@ def main(argv):
     master_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
     master_model.share_memory()
     sub_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
-    sub_model.load_state_dict(torch.load('./models/task1_extended_15264524/model_best'))
+    sub_model.load_state_dict(torch.load('./models/task1_extended_junction_19512637/model_best'))
     sub_model.share_memory()
 
     optimizer = SharedAdam(master_model.parameters(), lr=FLAGS.learning_rate)
@@ -68,8 +68,8 @@ def main(argv):
     worker_list = []
     evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, master_model, optimizer,
                                                          global_counter,
-                                                         FLAGS.num_of_workers * FLAGS.worker_steps,
-                                                         'mask'))
+                                                         FLAGS.max_steps,
+                                                         ''))
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 

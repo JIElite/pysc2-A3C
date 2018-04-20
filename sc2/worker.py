@@ -141,6 +141,10 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 summary_queue.put((global_counter.value, episode_reward))
                 episode_reward = 0
 
+            if global_counter.value >= args['max_steps']:
+                print("Finish worker:", worker_id)
+                return
+
 
 def worker_non_spatial_spatial(worker_id, args, shared_model, optimizer, global_counter, summary_queue):
     torch.manual_seed(args['seed'] + worker_id)

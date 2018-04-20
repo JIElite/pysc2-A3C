@@ -29,53 +29,59 @@ def evaluator(summary_queue, shared_model, optimizer,
 
     evaluation_steps = 10000
 
-    while True:
-        if global_counter.value >= end_of_steps - 3000:
-            torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
-            torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
-            with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
-                pickle.dump(statistics, fout)
-            return
+    try:
+        while True:
+            if global_counter.value >= end_of_steps - 3000:
+                torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
+                torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
+                with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
+                    pickle.dump(statistics, fout)
+                return
 
-        frames, episode_reward = summary_queue.get()
-        sum_of_eps_return += episode_reward
-        num_of_eps += 1
-        recent_perf_queue.append(episode_reward)
-        print('frames: {}, eps score: {}'.format(frames, episode_reward))
+            frames, episode_reward = summary_queue.get()
+            sum_of_eps_return += episode_reward
+            num_of_eps += 1
+            recent_perf_queue.append(episode_reward)
+            print('frames: {}, eps score: {}'.format(frames, episode_reward))
 
-        # evaluate recently performance per 10000 frames
-        current_step = global_counter.value
-        if len(recent_perf_queue) > 20 and current_step > evaluation_steps:
-            # update latest model
-            torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
-            torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
+            # evaluate recently performance per 10000 frames
+            current_step = global_counter.value
+            if len(recent_perf_queue) > 20 and current_step > evaluation_steps:
+                # update latest model
+                torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
+                torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
 
-            # compute mean perf
-            recent_100_mean_perf = sum(recent_perf_queue) / len(recent_perf_queue)
-            mean_perf = sum_of_eps_return / num_of_eps
+                # compute mean perf
+                recent_100_mean_perf = sum(recent_perf_queue) / len(recent_perf_queue)
+                mean_perf = sum_of_eps_return / num_of_eps
 
-            if recent_100_mean_perf > recent_100_best_mean_perf:
-                recent_100_best_mean_perf = recent_100_mean_perf
-                torch.save(shared_model.state_dict(), './models/model_best' + statistics_postfix)
-                torch.save(optimizer.state_dict(), './models/optimizer_best' + statistics_postfix)
+                if recent_100_mean_perf > recent_100_best_mean_perf:
+                    recent_100_best_mean_perf = recent_100_mean_perf
+                    torch.save(shared_model.state_dict(), './models/model_best' + statistics_postfix)
+                    torch.save(optimizer.state_dict(), './models/optimizer_best' + statistics_postfix)
 
-            if mean_perf > best_mean_perf:
-                best_mean_perf = mean_perf
+                if mean_perf > best_mean_perf:
+                    best_mean_perf = mean_perf
 
-            print('Elapsed steps:{}, episode: {}, mean: {}, best mean: {}, recent 100 mean: {}, recent 100 best mean: {}'\
-                .format(current_step, num_of_eps, mean_perf, best_mean_perf, recent_100_mean_perf, recent_100_best_mean_perf))
-            print('-------------------------------------------')
+                print('Elapsed steps:{}, episode: {}, mean: {}, best mean: {}, recent 100 mean: {}, recent 100 best mean: {}'\
+                    .format(current_step, num_of_eps, mean_perf, best_mean_perf, recent_100_mean_perf, recent_100_best_mean_perf))
+                print('-------------------------------------------')
 
-            statistics['mean_perf'].append(mean_perf)
-            statistics['best_mean_perf'].append(best_mean_perf)
-            statistics['recent_100_mean_perf'].append(recent_100_mean_perf)
-            statistics['recent_100_best_mean_perf'].append(recent_100_best_mean_perf)
-            evaluation_steps += 10000
-
-
-        # store statistics per 10000 episodes
-        if num_of_eps % 100 == 0:
-            with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
-                pickle.dump(statistics, fout)
+                statistics['mean_perf'].append(mean_perf)
+                statistics['best_mean_perf'].append(best_mean_perf)
+                statistics['recent_100_mean_perf'].append(recent_100_mean_perf)
+                statistics['recent_100_best_mean_perf'].append(recent_100_best_mean_perf)
+                evaluation_steps += 10000
 
 
+            # store statistics per 10000 episodes
+            if num_of_eps % 100 == 0:
+                with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
+                    pickle.dump(statistics, fout)
+
+    except:
+        torch.save(shared_model.state_dict(), './models/model_latest' + statistics_postfix)
+        torch.save(optimizer.state_dict(), './models/optimizer_latest' + statistics_postfix)
+        with open('statistics' + statistics_postfix + '.pkl', 'wb') as fout:
+            pickle.dump(statistics, fout)
+        return

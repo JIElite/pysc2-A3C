@@ -27,7 +27,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
-flags.DEFINE_integer('worker_steps', 10500000, "steps run for each worker")
+flags.DEFINE_integer('max_steps', 10500000, "steps run for each worker")
 flags.DEFINE_integer('max_eps_length', 5000, "max length run for each episode")
 
 # Learning related settings
@@ -76,7 +76,7 @@ def main(argv):
     worker_list = []
     evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, shared_model, optimizer,
                                                          global_counter,
-                                                         FLAGS.num_of_workers * FLAGS.worker_steps,
+                                                         FLAGS.max_steps,
                                                          FLAGS.postfix))
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
