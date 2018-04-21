@@ -78,13 +78,13 @@ def train_master(worker_id, args, shared_model, optimizer, global_counter, summa
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                                                                ))).cuda(args['gpu'])
+                                                                ))).cuda()
 
-                select_spatial_action_prob, value = local_master_model(screen_observation)
+                select_spatial_action_prob, value, _ = local_master_model(screen_observation)
 
                 # mask spatial action
                 selection_mask = torch.from_numpy((state.observation['screen'][_SCREEN_PLAYER_RELATIVE] == 1).astype('float32'))
-                selection_mask = Variable(selection_mask.view(1, -1), requires_grad=False).cuda(args['gpu'])
+                selection_mask = Variable(selection_mask.view(1, -1), requires_grad=False).cuda()
                 masked_select_spatial_action_prob = select_spatial_action_prob * selection_mask
                 masked_select_spatial_action_prob = masked_select_spatial_action_prob / masked_select_spatial_action_prob.sum()
                 select_action = masked_select_spatial_action_prob.multinomial()
@@ -108,9 +108,9 @@ def train_master(worker_id, args, shared_model, optimizer, global_counter, summa
                     screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                         timesteps=state,
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                    )), volatile=True).cuda(args['gpu'])
+                    )), volatile=True).cuda()
 
-                    spatial_action_prob, value = local_sub_model(screen_observation)
+                    spatial_action_prob, value, _ = local_sub_model(screen_observation)
                     spatial_action = spatial_action_prob.multinomial()
                     action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
                     state = env.step([action])[0]
@@ -139,16 +139,16 @@ def train_master(worker_id, args, shared_model, optimizer, global_counter, summa
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
-                                                            ))).cuda(args['gpu'])
-                _, value = local_master_model(screen_observation)
+                                                            ))).cuda()
+                _, value, _ = local_master_model(screen_observation)
                 R_t = value.data
 
 
-            R_var = Variable(R_t).cuda(args['gpu'])
+            R_var = Variable(R_t).cuda()
             critic_values.append(R_var)
             policy_loss = 0.
             value_loss = 0.
-            gae_ts = torch.zeros(1).cuda(args['gpu'])
+            gae_ts = torch.zeros(1).cuda()
             for i in reversed(range(len(rewards))):
                 R_var = rewards[i] + args['gamma'] * R_var
 
@@ -354,8 +354,8 @@ def train_conjunction(
         local_model = model(screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(gpu_id)
         freeze_layers(shared_model.conv_master)
         freeze_layers(shared_model.conv_sub)
-        freeze_layers(shared_model.spatial_policy)
-        freeze_layers(shared_model.select_unit)
+        # freeze_layers(shared_model.spatial_policy)
+        # freeze_layers(shared_model.select_unit)
         # freeze_layers(shared_model.non_spatial_branch)
         # freeze_layers(shared_model.value)
 
@@ -383,7 +383,7 @@ def train_conjunction(
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                 ))).cuda(gpu_id)
 
-                select_action_prob, spatial_action_prob, value = local_model(screen_observation)
+                select_action_prob, spatial_action_prob, value, _ = local_model(screen_observation)
 
                 # mask select action
                 selection_mask = torch.from_numpy(
@@ -448,7 +448,7 @@ def train_conjunction(
                     timesteps=state,
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                 ))).cuda(gpu_id)
-                _, _, value = local_model(screen_observation)
+                _, _, value, _ = local_model(screen_observation)
                 R_t = value.data
 
             R_var = Variable(R_t).cuda(gpu_id)

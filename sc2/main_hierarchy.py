@@ -42,9 +42,12 @@ flags.DEFINE_integer("n_steps", 8,  "How many steps do we compute the Return (TD
 flags.DEFINE_integer("seed", 5, "torch random seed")
 flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_integer("gpu", 0, "gpu device")
-
+flags.DEFINE_string("postfix", "", "postfix of training data")
 
 FLAGS(sys.argv)
+
+torch.cuda.set_device(FLAGS.gpu)
+print("CUDA device:", torch.cuda.current_device())
 
 
 def main(argv):
@@ -55,10 +58,10 @@ def main(argv):
     summary_queue = mp.Queue()
 
     # share model
-    master_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
+    master_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     master_model.share_memory()
-    sub_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
-    sub_model.load_state_dict(torch.load('./models/task1_extended_junction_19512637/model_best'))
+    sub_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
+    sub_model.load_state_dict(torch.load('./models/task1_300s_original_16347668/model_best'))
     sub_model.share_memory()
 
     optimizer = SharedAdam(master_model.parameters(), lr=FLAGS.learning_rate)
@@ -69,7 +72,7 @@ def main(argv):
     evaluate_worker = mp.Process(target=evaluator, args=(summary_queue, master_model, optimizer,
                                                          global_counter,
                                                          FLAGS.max_steps,
-                                                         ''))
+                                                         FLAGS.postfix))
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 

@@ -29,13 +29,14 @@ class FullyConv(nn.Module):
 
         # spatial policy branch
         policy_branch = self.spatial_policy(x)
+        spatial_policy = policy_branch
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         action_prob = nn.functional.softmax(policy_branch, dim=1)
 
         # non spatial branch
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
         value = self.value(non_spatial_represenatation)
-        return action_prob, value
+        return action_prob, value, F.softmax(spatial_policy[0][0], dim=1)
 
 
 class FullyConvExtended(nn.Module):
@@ -72,7 +73,7 @@ class FullyConvExtended(nn.Module):
         # non spatial branch
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
         value = self.value(non_spatial_represenatation)
-        return action_prob, value
+        return action_prob, value, None
 
 
 class FullyConvMultiUnitCollectBaseline(nn.Module):
@@ -107,6 +108,7 @@ class FullyConvMultiUnitCollectBaseline(nn.Module):
 
         # spatial policy branch
         policy_branch = self.spatial_policy(x)
+        spatial_vis = policy_branch
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
 
@@ -114,7 +116,7 @@ class FullyConvMultiUnitCollectBaseline(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value
+        return select_unit_prob, spatial_action_prob, value, F.softmax(spatial_vis[0][0])
 
 
 class FullyConvMultiUnitCollectBaselineExtended(nn.Module):
@@ -159,7 +161,7 @@ class FullyConvMultiUnitCollectBaselineExtended(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value
+        return select_unit_prob, spatial_action_prob, value, None
 
 
 class Grafting_MultiunitCollect(nn.Module):
@@ -199,7 +201,7 @@ class Grafting_MultiunitCollect(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1)))  # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value
+        return select_unit_prob, spatial_action_prob, value, None
 
 
 class ExtendConv3Grafting_MultiunitCollect(nn.Module):
@@ -235,6 +237,7 @@ class ExtendConv3Grafting_MultiunitCollect(nn.Module):
 
         # spatial policy branch
         policy_branch = self.spatial_policy(x)
+        temp_policy_branch = policy_branch
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
 
@@ -242,7 +245,7 @@ class ExtendConv3Grafting_MultiunitCollect(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1)))  # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value
+        return select_unit_prob, spatial_action_prob, value, None
 
 
 
