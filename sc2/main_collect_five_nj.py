@@ -8,12 +8,19 @@ from pysc2.env import sc2_env
 import torch
 import torch.multiprocessing as mp
 
-from model import Grafting_MultiunitCollect, ExtendConv3Grafting_MultiunitCollect, FullyConv
+from model import (
+    Grafting_MultiunitCollect,
+    ExtendConv3Grafting_MultiunitCollect,
+    FullyConv,
+    Grafting_MultiunitCollect_WithActionFeatures,
+    ExtendConv3Grafting_MultiunitCollect_WithActionFeatures,
+)
 from optimizer import SharedAdam
 from monitor import evaluator
 
 # TODO designed new training procedure
 from train_hierarchical import train_conjunction
+from train_collect_five_nj import train_conjunction_with_action_features
 from utils import freeze_layers
 
 
@@ -39,6 +46,7 @@ flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_boolean("multiple_gpu", False, "use multiple gpu or single gpu")
 flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_boolean("extend_model", False, "using extended model or not")
+flags.DEFINE_boolean("with_action", False, "with action features")
 # statistical postfix
 flags.DEFINE_string("postfix", "", "postfix of training data")
 FLAGS(sys.argv)
@@ -56,8 +64,12 @@ def main(argv):
 
     if FLAGS.extend_model:
         model = ExtendConv3Grafting_MultiunitCollect
+        if FLAGS.with_action:
+            model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
     else:
         model = Grafting_MultiunitCollect
+        if FLAGS.with_action:
+            model = Grafting_MultiunitCollect_WithActionFeatures
 
     # share model
     use_multiple_gpu = FLAGS.multiple_gpu
@@ -109,8 +121,14 @@ def main(argv):
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 
+    # training
+    training_func = train_conjunction
+    if FLAGS.with_action:
+        training_func = train_conjunction_with_action_features
+
+
     for worker_id in range(FLAGS.num_of_workers):
-        worker = mp.Process(target=train_conjunction,
+        worker = mp.Process(target=training_func,
                             args=(worker_id, FLAGS.flag_values_dict(), shared_model,
                                   optimizer, global_counter, summary_queue))
         worker.start()
