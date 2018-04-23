@@ -75,7 +75,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                                                                 ))).cuda()
-                spatial_action_prob, value = local_model(screen_observation)
+                spatial_action_prob, value, _ = local_model(screen_observation)
                 log_spatial_action_prob = torch.log(torch.clamp(spatial_action_prob, min=1e-12))
                 spatial_action = spatial_action_prob.multinomial()
                 spatial_entropy = -(log_spatial_action_prob * spatial_action_prob).sum(1)
@@ -91,12 +91,20 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 state = env.step([action])[0]
 
                 reward = np.asscalar(state.reward)
-                rewards.append(reward)
-                episode_reward += reward
+
+
+                for no_op_step in range(args['insert_no_op_steps']):
+                    action = actions.FunctionCall(_NO_OP, [])
+                    state = env.step([action])[0]
+                    reward += np.asscalar(state.reward)
+                    episode_done = (episode_length >= args['max_eps_length']) or state.last()
+                    if episode_done:
+                        break
 
                 episode_length += 1
                 global_counter.value += 1
-
+                rewards.append(reward)
+                episode_reward += reward
 
                 episode_done = (episode_length >= args['max_eps_length']) or state.last()
                 if episode_done:
@@ -111,7 +119,7 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                                                                     timesteps=state,
                                                                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                                                             ))).cuda()
-                _, value = local_model(screen_observation)
+                _, value, _ = local_model(screen_observation)
                 R_t = value.data
 
 

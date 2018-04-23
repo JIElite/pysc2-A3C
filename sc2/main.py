@@ -23,7 +23,7 @@ flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
 flags.DEFINE_enum("bot_race", None, sc2_env.races.keys(), "Bot's race.")
-flags.DEFINE_integer('max_steps', 10000000, "steps run for each worker")
+flags.DEFINE_integer('max_steps', 10010000, "steps run for each worker")
 flags.DEFINE_integer('max_eps_length', 5000, "max length run for each episode")
 
 # Learning related settings
@@ -36,6 +36,7 @@ flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_boolean("extend_model", False, "extend conv3 or not")
 flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_string("postfix", "", "postfix of training data")
+flags.DEFINE_integer("insert_no_op_steps", 0, "num of steps to insert NO_OP between each agent steps")
 FLAGS(sys.argv)
 
 torch.cuda.set_device(FLAGS.gpu)
