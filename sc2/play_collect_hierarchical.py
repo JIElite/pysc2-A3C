@@ -29,9 +29,14 @@ flags.DEFINE_integer('max_eps_length', 5000, "max length run for each episode")
 
 # Learning related settings
 flags.DEFINE_integer("seed", 5, "torch random seed")
+flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_integer("num_episodes", 100, "# of episode for agent to play with environment")
 flags.DEFINE_string("model_desination", "", "destination of pretrained model")
+flags.DEFINE_float("step_delay", 0.3, "delay for each agent step")
 FLAGS(sys.argv)
+
+torch.cuda.set_device(FLAGS.gpu)
+print("CUDA device:", torch.cuda.current_device())
 
 # action type id
 _NO_OP = actions.FUNCTIONS.no_op.id
@@ -65,12 +70,13 @@ def main(argv):
     sub_model = FullyConv(screen_channels=8,
                              screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     # load model
-    pretrained_master_model= './models/collect_five_master_better_sub_10349177/model_latest'
-    pretrained_sub_model= './models/task1_extended_junction_19512637/model_best'
+    pretrained_master_model= './models/collect_five_hierarchical_with_mask_10016017/model_best'
+    # pretrained_sub_model= './models/task1_300s_original_16347668/model_best'
+    pretrained_sub_model = './models/task1_extended_15264524/model_best'
 
     master_model.load_state_dict(torch.load(pretrained_master_model))
     sub_model.load_state_dict(torch.load(pretrained_sub_model))
-
+    total_eps_reward = 0
     # play with environment
     with env:
         for i_episode in range(FLAGS.num_episodes):
@@ -85,7 +91,7 @@ def main(argv):
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                 ))).cuda()
 
-                select_spatial_action_prob, value = master_model(screen_observation)
+                select_spatial_action_prob, value, _ = master_model(screen_observation)
 
                 # mask spatial action
                 selection_mask = torch.from_numpy(
@@ -110,27 +116,31 @@ def main(argv):
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15],
                     )), volatile=True).cuda()
 
-                    spatial_action_prob, value = sub_model(screen_observation)
+                    spatial_action_prob, value, _ = sub_model(screen_observation)
                     spatial_action = spatial_action_prob.multinomial()
                     action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
                     state = env.step([action])[0]
                 else:
                     print('no op')
+
                     action = actions.FunctionCall(_NO_OP, [])
                     state = env.step([action])[0]
 
                 temp_reward += np.asscalar(state.reward)
 
                 # ================================================
-                time.sleep(0.1)
+                time.sleep(FLAGS.step_delay)
 
-                reward = np.asscalar(state.reward)
                 episodic_reward += temp_reward
 
                 episode_done = (step >= FLAGS.max_eps_length) or state.last()
                 if episode_done:
                     print('Episodic reward:', episodic_reward)
+                    total_eps_reward += episodic_reward
                     break
+
+    mean_performance = total_eps_reward / FLAGS.num_episodes
+    print("Mean performance:", mean_performance)
 
 
 if __name__ == '__main__':

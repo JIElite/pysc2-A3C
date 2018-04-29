@@ -16,8 +16,10 @@ from pysc2.env import sc2_env
 from pysc2.lib import actions, features
 
 import numpy as np
+import seaborn as sns
 import torch
 from torch.autograd import Variable
+import matplotlib.pyplot as plt
 
 from envs import create_pysc2_env, GameInterfaceHandler
 from model import (
@@ -96,6 +98,8 @@ def main(argv):
         local_model = model(screen_channels=8, screen_resolution=[FLAGS.screen_resolution] * 2).cuda()
         local_model.load_state_dict(torch.load(FLAGS.pretrained_model))
 
+
+        total_eps_return = 0
         for i_episode in range(FLAGS.num_episodes):
             env.reset()
             state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
@@ -105,8 +109,8 @@ def main(argv):
                 screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                     timesteps=state,
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                ))).cuda()
-                select_action_prob, spatial_action_prob, value = local_model(screen_observation)
+                )), volatile=True).cuda()
+                select_action_prob, spatial_action_prob, value, spatial_2d = local_model(screen_observation)
 
                 # mask select action
                 selection_mask = torch.from_numpy(
@@ -124,17 +128,25 @@ def main(argv):
                 state = env.step([select_action])[0]
                 reward = np.asscalar(state.reward)
 
+                # visualize spatial action prob
+                # if step % 5 == 0:
+                #     np_spatial = spatial_2d.data.cpu().numpy()
+                #     sns.heatmap(np_spatial, linewidths=0.5, cmap="YlGnBu")
+                #     plt.show()
+                #     input()
+
                 if _MOVE_SCREEN in state.observation['available_actions']:
-                    spatial_action = spatial_action_prob.multinomial()
-                    move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
+                    # spatial_action = spatial_action_prob.multinomial()
+                    # move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
+
+                    spatial_action = spatial_action_prob.max(1)[1]
+                    move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action.cpu())
                     state = env.step([move_action])[0]
 
                 else:
                     state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
 
                 time.sleep(FLAGS.step_delay)
-                # input()
-
 
                 reward += np.asscalar(state.reward)
                 episodic_reward += reward
@@ -142,8 +154,10 @@ def main(argv):
                 episode_done = (step >= FLAGS.max_eps_length) or state.last()
                 if episode_done:
                     print('Episodic reward:', episodic_reward)
+                    total_eps_return += episodic_reward
                     break
 
+        print("mean episode return:", total_eps_return / FLAGS.num_episodes)
 
 if __name__ == '__main__':
     app.run(main)
