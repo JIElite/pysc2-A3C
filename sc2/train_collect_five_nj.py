@@ -11,7 +11,6 @@ from pysc2.lib import features
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
 from model import (
-    FullyConv,
     Grafting_MultiunitCollect_WithActionFeatures,
     ExtendConv3Grafting_MultiunitCollect_WithActionFeatures,
 )

@@ -9,16 +9,15 @@ import torch
 import torch.multiprocessing as mp
 
 from model import (
+    FullyConv,
     Grafting_MultiunitCollect,
     ExtendConv3Grafting_MultiunitCollect,
-    FullyConv,
     Grafting_MultiunitCollect_WithActionFeatures,
     ExtendConv3Grafting_MultiunitCollect_WithActionFeatures,
 )
 from optimizer import SharedAdam
 from monitor import evaluator
 
-# TODO designed new training procedure
 from train_hierarchical import train_conjunction
 from train_collect_five_nj import train_conjunction_with_action_features
 from utils import freeze_layers
