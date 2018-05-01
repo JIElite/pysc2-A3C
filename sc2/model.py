@@ -412,6 +412,9 @@ class CollectFiveBaselineWithActionFeatures(nn.Module):
 
 
 class CollectFiveBaselineWithActionFeaturesV2(nn.Module):
+    """
+    The difference between v1 and v2 is the # of channels in the first CNN.
+    """
     def __init__(self, screen_channels, screen_resolution):
         super(CollectFiveBaselineWithActionFeaturesV2, self).__init__()
         self.conv1 = nn.Conv2d(screen_channels, 32, kernel_size=(5, 5), stride=1, padding=2)
