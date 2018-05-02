@@ -153,15 +153,20 @@ def main(argv):
                         = short_term_model(screen_observation)
 
                     # visualize spatial policy
+                    plt.figure()
+                    plt.subplot(121)
+                    plt.title('grafted from long-term')
                     np_spatial = spatial_softmax_policy.data.cpu().numpy()
                     sns.heatmap(np_spatial, linewidths=0.5, cmap="YlGnBu")
-                    plt.show()
+                    # plt.show()
 
+                    plt.subplot(122)
+                    plt.title('grafted from short-term')
                     np_short_term_grafted = short_term_grafted_spatial_policy.data.cpu().numpy()
                     sns.heatmap(np_short_term_grafted, linewidths=0.5, cmap="YlGnBu")
                     plt.show()
 
-                    np_long_term = long_term_spatial_policy.data.cpu().numpy()
+                    # np_long_term = long_term_spatial_policy.data.cpu().numpy()
                     # sns.heatmap(np_long_term, linewidths=0.5, cmap='YlGnBu')
                     # plt.show()
 
