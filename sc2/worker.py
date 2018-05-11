@@ -87,9 +87,13 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
                 critic_values.append(value)
 
                 # Step
-                action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
-                state = env.step([action])[0]
+                if 'Defeat' in args['map']:
+                    action = _RIGHT_CLICK
+                elif 'Collect' in args['map']:
+                    action = _MOVE_SCREEN
 
+                action = game_inferface.build_action(action, spatial_action[0].cpu())
+                state = env.step([action])[0]
                 reward = np.asscalar(state.reward)
 
 
