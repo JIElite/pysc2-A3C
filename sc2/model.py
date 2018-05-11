@@ -76,6 +76,80 @@ class FullyConvExtended(nn.Module):
         return action_prob, value, None
 
 
+class FullyConvWithActionIndicator(nn.Module):
+    def __init__(self, screen_channels, screen_resolution):
+        super(FullyConvWithActionIndicator, self).__init__()
+        self.conv1 = nn.Conv2d(screen_channels+1, 16, kernel_size=(5, 5), stride=1, padding=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=(3, 3), stride=1, padding=1)
+        self.spatial_policy = nn.Conv2d(32, 1, kernel_size=(1, 1))
+
+        self.non_spatial_branch = nn.Linear(screen_resolution[0] * screen_resolution[1] * 32, 256)
+        self.value = nn.Linear(256, 1)
+
+        # init weight
+        nn.init.xavier_uniform(self.conv1.weight.data)
+        nn.init.xavier_uniform(self.conv2.weight.data)
+        nn.init.xavier_uniform(self.spatial_policy.weight.data)
+        nn.utils.weight_norm(self.non_spatial_branch)
+        nn.utils.weight_norm(self.value)
+        self.non_spatial_branch.bias.data.fill_(0)
+        self.value.bias.data.fill_(0)
+
+    def forward(self, x, action_indicator):
+        x = torch.cat([x, action_indicator], dim=1)
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+
+        # spatial policy branch
+        policy_branch = self.spatial_policy(x)
+        spatial_policy = policy_branch
+        policy_branch = policy_branch.view(policy_branch.shape[0], -1)
+        action_prob = nn.functional.softmax(policy_branch, dim=1)
+
+        # non spatial branch
+        non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
+        value = self.value(non_spatial_represenatation)
+        return action_prob, value, F.softmax(spatial_policy[0][0], dim=1)
+
+
+class FullyConvExtendConv3WithActionIndicator(nn.Module):
+    def __init__(self, screen_channels, screen_resolution):
+        super(FullyConvExtendConv3WithActionIndicator, self).__init__()
+        self.conv1 = nn.Conv2d(screen_channels+1, 16, kernel_size=(5, 5), stride=1, padding=2)
+        self.conv2 = nn.Conv2d(16, 32, kernel_size=(3, 3), stride=1, padding=1)
+        self.conv3 = nn.Conv2d(32, 32, kernel_size=(3, 3), stride=1, padding=1)
+        self.spatial_policy = nn.Conv2d(32, 1, kernel_size=(1, 1))
+
+        self.non_spatial_branch = nn.Linear(screen_resolution[0] * screen_resolution[1] * 32, 256)
+        self.value = nn.Linear(256, 1)
+
+        # init weight
+        nn.init.xavier_uniform(self.conv1.weight.data)
+        nn.init.xavier_uniform(self.conv2.weight.data)
+        nn.init.xavier_uniform(self.spatial_policy.weight.data)
+        nn.utils.weight_norm(self.non_spatial_branch)
+        nn.utils.weight_norm(self.value)
+        self.non_spatial_branch.bias.data.fill_(0)
+        self.value.bias.data.fill_(0)
+
+    def forward(self, x, action_indicator):
+        x = torch.cat([x, action_indicator], dim=1)
+        x = F.relu(self.conv1(x))
+        x = F.relu(self.conv2(x))
+        x = F.relu(self.conv3(x))
+
+        # spatial policy branch
+        policy_branch = self.spatial_policy(x)
+        spatial_policy = policy_branch
+        policy_branch = policy_branch.view(policy_branch.shape[0], -1)
+        action_prob = nn.functional.softmax(policy_branch, dim=1)
+
+        # non spatial branch
+        non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1))) # flatten the state representation
+        value = self.value(non_spatial_represenatation)
+        return action_prob, value, F.softmax(spatial_policy[0][0], dim=1)
+
+
 class FullyConvSelecAction(nn.Module):
     def __init__(self, screen_channels, screen_resolution):
         super(FullyConvSelecAction, self).__init__()

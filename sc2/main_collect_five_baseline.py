@@ -13,6 +13,8 @@ from model import (
     CollectFiveBaselineWithActionFeaturesV2,
     CollectFiveBaselineWithActionFeaturesExtendConv3,
     CollectFiveBaselineWithActionFeaturesExtendConv3V2,
+    FullyConvWithActionIndicator,
+    FullyConvExtendConv3WithActionIndicator
 )
 
 from optimizer import SharedAdam
@@ -43,7 +45,7 @@ flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_boolean("multiple_gpu", False, "use multiple gpu or single gpu")
 flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_boolean("extend_model", False, "using extended model or not")
-flags.DEFINE_boolean("v2", False, "with action features")
+flags.DEFINE_integer("version", 1, "with action features")
 # statistical postfix
 flags.DEFINE_string("postfix", "", "postfix of training data")
 FLAGS(sys.argv)
@@ -59,18 +61,27 @@ def main(argv):
     global_counter = mp.Value('i', 0)
     summary_queue = mp.Queue()
 
-    if FLAGS.extend_model:
-        model = CollectFiveBaselineWithActionFeaturesExtendConv3
-        if FLAGS.v2:
+    if FLAGS.version == 1:
+        if FLAGS.extend_model:
+            model = CollectFiveBaselineWithActionFeaturesExtendConv3
+        else:
+            model = CollectFiveBaselineWithActionFeatures
+    elif FLAGS.version == 2:
+        if FLAGS.extend_model:
             model = CollectFiveBaselineWithActionFeaturesExtendConv3V2
-    else:
-        model = CollectFiveBaselineWithActionFeatures
-        if FLAGS.v2:
+        else:
             model = CollectFiveBaselineWithActionFeaturesV2
+    elif FLAGS.version == 3:
+        if FLAGS.extend_model:
+            model = FullyConvExtendConv3WithActionIndicator
+        else:
+            model = FullyConvWithActionIndicator
+    else:
+        print('model version error')
+        return
 
     # share model
     use_multiple_gpu = FLAGS.multiple_gpu
-
     if use_multiple_gpu:
         shared_model = model(screen_channels=8, screen_resolution=(
             FLAGS.screen_resolution, FLAGS.screen_resolution))
@@ -91,7 +102,7 @@ def main(argv):
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 
-    # training
+    # select version of worker function
     training_func = train_baseline_with_action_features
     for worker_id in range(FLAGS.num_of_workers):
         worker = mp.Process(target=training_func,

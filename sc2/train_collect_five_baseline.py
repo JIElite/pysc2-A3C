@@ -15,9 +15,10 @@ from model import (
     CollectFiveBaselineWithActionFeaturesV2,
     CollectFiveBaselineWithActionFeaturesExtendConv3,
     CollectFiveBaselineWithActionFeaturesExtendConv3V2,
+    FullyConvWithActionIndicator,
+    FullyConvExtendConv3WithActionIndicator,
 )
 from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
-from utils import freeze_layers
 
 torch.set_printoptions(threshold=5000)
 
@@ -53,15 +54,21 @@ def train_baseline_with_action_features(
     env = create_pysc2_env(env_args)
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'],
                                           minimap_resolution=args['minimap_resolution'])
-
-    if args['extend_model']:
-        model = CollectFiveBaselineWithActionFeaturesExtendConv3
-        if args['v2']:
+    if args['version'] == 1:
+        if args['extend_model']:
+            model = CollectFiveBaselineWithActionFeaturesExtendConv3
+        else:
+            model = CollectFiveBaselineWithActionFeatures
+    elif args['version'] == 2:
+        if args['extend_model']:
             model = CollectFiveBaselineWithActionFeaturesExtendConv3V2
-    else:
-        model = CollectFiveBaselineWithActionFeatures
-        if args['v2']:
+        else:
             model = CollectFiveBaselineWithActionFeaturesV2
+    elif args['version'] == 3:
+        if args['extend_model']:
+            model = FullyConvExtendConv3WithActionIndicator
+        else:
+            model = FullyConvWithActionIndicator
 
     gpu_id = args['gpu']
     with env:
@@ -91,7 +98,10 @@ def train_baseline_with_action_features(
                 ))).cuda(gpu_id)
 
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
-                select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
+                if args['version'] < 3:
+                    select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
+                else:
+                    select_action_prob, value, _ = local_model(screen_observation, select_indicator)
 
                 # mask select action
                 selection_mask = torch.from_numpy(
@@ -129,7 +139,10 @@ def train_baseline_with_action_features(
                     ))).cuda(gpu_id)
 
                     spatial_move_indicator = Variable(torch.ones(1, 1, 32, 32)).cuda(gpu_id)
-                    _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+                    if args['version'] < 3:
+                        _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+                    else:
+                        spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
 
                     spatial_action = spatial_action_prob.multinomial()
                     move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
@@ -176,7 +189,12 @@ def train_baseline_with_action_features(
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                 ))).cuda(gpu_id)
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
-                _, _, value, _ = local_model(screen_observation, select_indicator)
+
+                if args['version'] < 3:
+                    _, _, value, _ = local_model(screen_observation, select_indicator)
+                else:
+                    _, value, _ = local_model(screen_observation, select_indicator)
+
                 R_t = value.data
 
             R_var = Variable(R_t).cuda(gpu_id)
