@@ -322,6 +322,7 @@ class Grafting_MultiunitCollect_WithActionFeatures(nn.Module):
 
         # spatial policy branch
         policy_branch = self.spatial_policy(x)
+        spatial_vis = policy_branch
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
 
@@ -329,7 +330,8 @@ class Grafting_MultiunitCollect_WithActionFeatures(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1)))  # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value, None
+        return select_unit_prob, spatial_action_prob, value, F.softmax(spatial_vis[0][0])
+        # return select_unit_prob, spatial_action_prob, value, spatial_vis[0][0]
 
 
 class ExtendConv3Grafting_MultiunitCollect_WithActionFeatures(nn.Module):
@@ -365,7 +367,7 @@ class ExtendConv3Grafting_MultiunitCollect_WithActionFeatures(nn.Module):
 
         # spatial policy branch
         policy_branch = self.spatial_policy(x)
-        temp_policy_branch = policy_branch
+        spatial_vis = policy_branch
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
 
@@ -373,7 +375,7 @@ class ExtendConv3Grafting_MultiunitCollect_WithActionFeatures(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1)))  # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value, None
+        return select_unit_prob, spatial_action_prob, value, F.softmax(spatial_vis[0][0])
 
 
 
@@ -400,7 +402,7 @@ class CollectFiveBaselineWithActionFeatures(nn.Module):
 
         # spatial policy branch
         policy_branch = self.spatial_policy(x)
-        temp_policy_branch = policy_branch
+        spatial_vis = policy_branch
         policy_branch = policy_branch.view(policy_branch.shape[0], -1)
         spatial_action_prob = nn.functional.softmax(policy_branch, dim=1)
 
@@ -408,10 +410,13 @@ class CollectFiveBaselineWithActionFeatures(nn.Module):
         non_spatial_represenatation = F.relu(self.non_spatial_branch(x.view(-1)))  # flatten the state representation
         value = self.value(non_spatial_represenatation)
 
-        return select_unit_prob, spatial_action_prob, value, None
+        return select_unit_prob, spatial_action_prob, value, F.softmax(spatial_vis[0][0])
 
 
 class CollectFiveBaselineWithActionFeaturesV2(nn.Module):
+    """
+    The difference between v1 and v2 is the # of channels in the first CNN.
+    """
     def __init__(self, screen_channels, screen_resolution):
         super(CollectFiveBaselineWithActionFeaturesV2, self).__init__()
         self.conv1 = nn.Conv2d(screen_channels, 32, kernel_size=(5, 5), stride=1, padding=2)
