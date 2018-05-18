@@ -11,8 +11,12 @@ from pysc2.lib import features
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
 from model import (
+    Grafting_MultiunitCollect,
+    ExtendConv3Grafting_MultiunitCollect,
     Grafting_MultiunitCollect_WithActionFeatures,
     ExtendConv3Grafting_MultiunitCollect_WithActionFeatures,
+    MultiInputSinglePolicyNet,
+    MultiInputSinglePolicyNetExtendConv3,
 )
 from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
 from utils import freeze_layers
@@ -52,20 +56,31 @@ def train_conjunction_with_action_features(
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'],
                                           minimap_resolution=args['minimap_resolution'])
 
-    if args['extend_model']:
-        model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
-    else:
-        model = Grafting_MultiunitCollect_WithActionFeatures
+    if args['version'] == 1:
+        if args['extend_model']:
+            model = ExtendConv3Grafting_MultiunitCollect
+        else:
+            model = Grafting_MultiunitCollect
+    elif args['version'] == 2:
+        if args['extend_model']:
+            model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
+        else:
+            model = Grafting_MultiunitCollect_WithActionFeatures
+
+    elif args['version'] == 3:
+        if args['extend_model']:
+            model = MultiInputSinglePolicyNetExtendConv3
+        else:
+            model = MultiInputSinglePolicyNet
+
 
     gpu_id = args['gpu']
     with env:
         local_model = model(screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(gpu_id)
-        freeze_layers(shared_model.conv_master)
-        freeze_layers(shared_model.conv_sub)
-        freeze_layers(shared_model.spatial_policy)
-        freeze_layers(shared_model.select_unit)
-        # freeze_layers(shared_model.non_spatial_branch)
-        # freeze_layers(shared_model.value)
+        # freeze_layers(shared_model.conv_master)
+        # freeze_layers(shared_model.conv_sub)
+        # freeze_layers(shared_model.spatial_policy)
+        # freeze_layers(shared_model.select_unit)
 
         env.reset()
         state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
@@ -91,7 +106,11 @@ def train_conjunction_with_action_features(
                 ))).cuda(gpu_id)
 
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
-                select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
+
+                if args['version'] == 2:
+                    select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
+                else:
+                    select_action_prob, value, _ = local_model(screen_observation, select_indicator)
 
                 # mask select action
                 selection_mask = torch.from_numpy(
@@ -112,13 +131,23 @@ def train_conjunction_with_action_features(
 
                 # Step
                 state = env.step([select_action])[0]
-                reward = np.asscalar(state.reward)
+                if state.reward > 1:
+                    reward = np.asscalar(np.array([10]))
+                else:
+                    reward = np.asscalar(np.array([-0.2]))
                 episode_reward += reward
 
                 entropies.append(select_entropy)
                 critic_values.append(value)
                 chosen_log_policy_probs.append(chosen_log_policy_prob)
                 rewards.append(reward)
+
+                episode_done = (episode_length >= args['max_eps_length']) or state.last()
+                if episode_done:
+                    episode_length = 0
+                    env.reset()
+                    state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
+                    break
 
                 # ------------------ The following is for spatial policy -------------------
 
@@ -129,7 +158,12 @@ def train_conjunction_with_action_features(
                     ))).cuda(gpu_id)
 
                     spatial_move_indicator = Variable(torch.ones(1, 1, 32, 32)).cuda(gpu_id)
-                    _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+
+                    if args['version'] == 2:
+                        _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+                    else:
+                        spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+
 
                     spatial_action = spatial_action_prob.multinomial()
                     move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
@@ -141,7 +175,10 @@ def train_conjunction_with_action_features(
                     chosen_log_policy_prob += chosen_log_spatial_action_prob
 
                     state = env.step([move_action])[0]
-                    reward = np.asscalar(state.reward)
+                    if state.reward > 1:
+                        reward = np.asscalar(np.array([10]))
+                    else:
+                        reward = np.asscalar(np.array([-0.2]))
                     episode_reward += reward
 
                     entropies.append(spatial_entropy)
@@ -150,7 +187,11 @@ def train_conjunction_with_action_features(
                     rewards.append(reward)
                 else:
                     state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
-                    reward = np.asscalar(state.reward)
+                    if isinstance(state.reward, int):
+                        reward = np.asscalar(np.array([state.reward]))
+                    else:
+                        reward = np.asscalar(state.reward)
+                    # reward = np.asscalar(state.reward)
                     rewards[-1] += reward
                     episode_reward += reward
                     with open('log.txt', 'a') as fd:
@@ -176,7 +217,12 @@ def train_conjunction_with_action_features(
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                 ))).cuda(gpu_id)
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
-                _, _, value, _ = local_model(screen_observation, select_indicator)
+
+                if args['version'] == 2:
+                    _, _, value, _ = local_model(screen_observation, select_indicator)
+                else:
+                    _, value, _ = local_model(screen_observation, select_indicator)
+
                 R_t = value.data
 
             R_var = Variable(R_t).cuda(gpu_id)

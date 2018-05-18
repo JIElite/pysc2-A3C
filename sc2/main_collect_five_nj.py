@@ -14,6 +14,8 @@ from model import (
     ExtendConv3Grafting_MultiunitCollect,
     Grafting_MultiunitCollect_WithActionFeatures,
     ExtendConv3Grafting_MultiunitCollect_WithActionFeatures,
+    MultiInputSinglePolicyNet,
+    MultiInputSinglePolicyNetExtendConv3,
 )
 from optimizer import SharedAdam
 from monitor import evaluator
@@ -45,7 +47,7 @@ flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_boolean("multiple_gpu", False, "use multiple gpu or single gpu")
 flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_boolean("extend_model", False, "using extended model or not")
-flags.DEFINE_boolean("with_action", False, "with action features")
+flags.DEFINE_integer("version", 2, "model type")
 # statistical postfix
 flags.DEFINE_string("postfix", "", "postfix of training data")
 FLAGS(sys.argv)
@@ -61,14 +63,23 @@ def main(argv):
     global_counter = mp.Value('i', 0)
     summary_queue = mp.Queue()
 
-    if FLAGS.extend_model:
-        model = ExtendConv3Grafting_MultiunitCollect
-        if FLAGS.with_action:
+
+    if FLAGS.version == 1:
+        if FLAGS.extend_model:
+            model = ExtendConv3Grafting_MultiunitCollect
+        else:
+            model = Grafting_MultiunitCollect
+    elif FLAGS.version == 2:
+        if FLAGS.extend_model:
             model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
-    else:
-        model = Grafting_MultiunitCollect
-        if FLAGS.with_action:
+        else:
             model = Grafting_MultiunitCollect_WithActionFeatures
+
+    elif FLAGS.version == 3:
+        if FLAGS.extend_model:
+            model = MultiInputSinglePolicyNetExtendConv3
+        else:
+            model = MultiInputSinglePolicyNet
 
     # share model
     use_multiple_gpu = FLAGS.multiple_gpu
@@ -79,10 +90,16 @@ def main(argv):
         './models/collect_five_hierarchical_with_mask_10016017/model_best'
     ))
 
-    pretrained_sub = FullyConv(screen_channels=8, screen_resolution=(
+    # pretrained_sub = FullyConv(screen_channels=8, screen_resolution=(
+    #     FLAGS.screen_resolution, FLAGS.screen_resolution))
+    # pretrained_sub.load_state_dict(torch.load(
+    #     './models/task1_300s_original_16347668/model_best'
+    # ))
+
+    long_term_model = FullyConv(screen_channels=8, screen_resolution=(
         FLAGS.screen_resolution, FLAGS.screen_resolution))
-    pretrained_sub.load_state_dict(torch.load(
-        './models/task1_300s_original_16347668/model_best'
+    long_term_model.load_state_dict(torch.load(
+        './models/task1_insert_no_op_steps_6_3070000/model_latest'
     ))
 
 
@@ -94,18 +111,16 @@ def main(argv):
             FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
 
     shared_model.conv_master.load_state_dict(pretrained_master.conv1.state_dict())
-    shared_model.conv_sub.load_state_dict(pretrained_sub.conv1.state_dict())
-    shared_model.spatial_policy.load_state_dict(pretrained_sub.spatial_policy.state_dict())
-    shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
+    shared_model.conv_sub.load_state_dict(long_term_model.conv1.state_dict())
+    # shared_model.spatial_policy.load_state_dict(long_term_model.spatial_policy.state_dict())
+    # shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
     # shared_model.non_spatial_branch.load_state_dict(pretrained_master.non_spatial_branch.state_dict())
     # shared_model.value.load_state_dict(pretrained_master.value.state_dict())
 
-    freeze_layers(shared_model.conv_master)
-    freeze_layers(shared_model.conv_sub)
-    freeze_layers(shared_model.spatial_policy)
-    freeze_layers(shared_model.select_unit)
-    # freeze_layers(shared_model.non_spatial_branch)
-    # freeze_layers(shared_model.value)
+    # freeze_layers(shared_model.conv_master)
+    # freeze_layers(shared_model.conv_sub)
+    # freeze_layers(shared_model.spatial_policy)
+    # freeze_layers(shared_model.select_unit)
 
 
     shared_model.share_memory()
@@ -121,11 +136,9 @@ def main(argv):
     worker_list.append(evaluate_worker)
 
     # training
-    training_func = train_conjunction
-    if FLAGS.with_action:
-        training_func = train_conjunction_with_action_features
-
-
+    # training_func = train_conjunction
+    # if FLAGS.with_action:
+    training_func = train_conjunction_with_action_features
     for worker_id in range(FLAGS.num_of_workers):
         worker = mp.Process(target=training_func,
                             args=(worker_id, FLAGS.flag_values_dict(), shared_model,
