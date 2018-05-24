@@ -17,6 +17,7 @@ from model import (
     MultiInputSinglePolicyNet,
     MultiInputSinglePolicyNetExtendConv3,
 )
+from model2 import CollectFiveDropout, CollectFiveDropoutConv3
 from optimizer import SharedAdam
 from monitor import evaluator
 
@@ -74,12 +75,17 @@ def main(argv):
             model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
         else:
             model = Grafting_MultiunitCollect_WithActionFeatures
-
     elif FLAGS.version == 3:
         if FLAGS.extend_model:
             model = MultiInputSinglePolicyNetExtendConv3
         else:
             model = MultiInputSinglePolicyNet
+    elif FLAGS.version == 4:
+        # dropout net
+        if FLAGS.extend_model:
+            model = CollectFiveDropoutConv3
+        else:
+            model = CollectFiveDropout
 
     # share model
     use_multiple_gpu = FLAGS.multiple_gpu
@@ -96,10 +102,10 @@ def main(argv):
     #     './models/task1_300s_original_16347668/model_best'
     # ))
 
-    long_term_model = FullyConv(screen_channels=8, screen_resolution=(
+    long_term_policy = FullyConv(screen_channels=8, screen_resolution=(
         FLAGS.screen_resolution, FLAGS.screen_resolution))
-    long_term_model.load_state_dict(torch.load(
-        './models/task1_insert_no_op_steps_6_3070000/model_latest'
+    long_term_policy.load_state_dict(torch.load(
+        './models/task1_insert_no_op_steps_6_3070000/model_latest_insert_no_op_steps_6'
     ))
 
 
@@ -111,12 +117,10 @@ def main(argv):
             FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
 
     shared_model.conv_master.load_state_dict(pretrained_master.conv1.state_dict())
-    shared_model.conv_sub.load_state_dict(long_term_model.conv1.state_dict())
-    # shared_model.spatial_policy.load_state_dict(long_term_model.spatial_policy.state_dict())
-    # shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
-    # shared_model.non_spatial_branch.load_state_dict(pretrained_master.non_spatial_branch.state_dict())
-    # shared_model.value.load_state_dict(pretrained_master.value.state_dict())
-
+    shared_model.conv_sub.load_state_dict(long_term_policy.conv1.state_dict())
+    shared_model.spatial_policy.load_state_dict(long_term_policy.spatial_policy.state_dict())
+    shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
+    shared_model.train()
     # freeze_layers(shared_model.conv_master)
     # freeze_layers(shared_model.conv_sub)
     # freeze_layers(shared_model.spatial_policy)

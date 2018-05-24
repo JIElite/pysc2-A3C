@@ -18,6 +18,7 @@ from model import (
     MultiInputSinglePolicyNet,
     MultiInputSinglePolicyNetExtendConv3,
 )
+from model2 import CollectFiveDropout, CollectFiveDropoutConv3
 from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
 from utils import freeze_layers
 
@@ -66,17 +67,21 @@ def train_conjunction_with_action_features(
             model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
         else:
             model = Grafting_MultiunitCollect_WithActionFeatures
-
     elif args['version'] == 3:
         if args['extend_model']:
             model = MultiInputSinglePolicyNetExtendConv3
         else:
             model = MultiInputSinglePolicyNet
-
+    elif args['version'] == 4:
+        if args['extend_model']:
+            model = CollectFiveDropoutConv3
+        else:
+            model = CollectFiveDropout
 
     gpu_id = args['gpu']
     with env:
         local_model = model(screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(gpu_id)
+        local_model.train()
         # freeze_layers(shared_model.conv_master)
         # freeze_layers(shared_model.conv_sub)
         # freeze_layers(shared_model.spatial_policy)
@@ -91,7 +96,7 @@ def train_conjunction_with_action_features(
         while True:
             # Sync the parameters with shared model
             local_model.load_state_dict(shared_model.state_dict())
-
+            local_model.train()
             # Reset n-step experience buffer
             entropies = []
             critic_values = []
@@ -109,6 +114,8 @@ def train_conjunction_with_action_features(
 
                 if args['version'] == 2:
                     select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
+                elif args['version'] == 4:
+                    select_action_prob, _, value, _ = local_model(screen_observation, select_indicator, 0)
                 else:
                     select_action_prob, value, _ = local_model(screen_observation, select_indicator)
 
@@ -135,6 +142,7 @@ def train_conjunction_with_action_features(
                     reward = np.asscalar(np.array([10]))
                 else:
                     reward = np.asscalar(np.array([-0.2]))
+                # reward = np.asscalar(np.array([state.reward]))
                 episode_reward += reward
 
                 entropies.append(select_entropy)
@@ -161,6 +169,8 @@ def train_conjunction_with_action_features(
 
                     if args['version'] == 2:
                         _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+                    elif args['version'] == 4:
+                        _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator, 1)
                     else:
                         spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
 
@@ -179,6 +189,7 @@ def train_conjunction_with_action_features(
                         reward = np.asscalar(np.array([10]))
                     else:
                         reward = np.asscalar(np.array([-0.2]))
+                    # reward = np.asscalar(np.array([state.reward]))
                     episode_reward += reward
 
                     entropies.append(spatial_entropy)
@@ -187,11 +198,12 @@ def train_conjunction_with_action_features(
                     rewards.append(reward)
                 else:
                     state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
-                    if isinstance(state.reward, int):
-                        reward = np.asscalar(np.array([state.reward]))
-                    else:
-                        reward = np.asscalar(state.reward)
-                    # reward = np.asscalar(state.reward)
+                    # if isinstance(state.reward, int):
+                    #     reward = np.asscalar(np.array([state.reward]))
+                    # else:
+                    #     reward = np.asscalar(state.reward)
+                    reward = np.asscalar(np.array([state.reward]))
+
                     rewards[-1] += reward
                     episode_reward += reward
                     with open('log.txt', 'a') as fd:
@@ -216,10 +228,13 @@ def train_conjunction_with_action_features(
                     timesteps=state,
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                 ))).cuda(gpu_id)
+
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
 
                 if args['version'] == 2:
                     _, _, value, _ = local_model(screen_observation, select_indicator)
+                elif args['version'] == 4:
+                    _, _, value, _ = local_model(screen_observation, select_indicator, 0)
                 else:
                     _, value, _ = local_model(screen_observation, select_indicator)
 
