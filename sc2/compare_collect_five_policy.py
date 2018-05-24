@@ -91,11 +91,37 @@ def main(argv):
     short_term_grafted_model = model(screen_channels=8, screen_resolution=[FLAGS.screen_resolution] * 2).cuda(gpu_id)
     short_term_grafted_model.load_state_dict(torch.load('./models/model_latest_with_action_not_extend_conv3'))
 
-    long_term_model = FullyConv(screen_channels=8, screen_resolution=[FLAGS.screen_resolution] * 2).cuda(gpu_id)
-    long_term_model.load_state_dict(torch.load('./models/task1_insert_no_op_steps_6_3070000/model_latest_insert_no_op_steps_6'))
+    short_policy_long_features_model = model(screen_channels=8, screen_resolution=[FLAGS.screen_resolution]*2).cuda(gpu_id)
+    short_policy_long_features_model.load_state_dict(
+        torch.load('./models/model_latest_collect_five_longterm_features_shortterm_policy_no_conv3')
+    )
 
-    short_term_model = FullyConv(screen_channels=8, screen_resolution=[FLAGS.screen_resolution] * 2).cuda(gpu_id)
-    short_term_model.load_state_dict(torch.load('./models/task1_insert_no_op_steps_3_3137102/model_latest_insert_no_op_steps_3'))
+    long_policy_short_features_model = model(screen_channels=8, screen_resolution=[FLAGS.screen_resolution]*2).cuda(gpu_id)
+    long_policy_short_features_model.load_state_dict(
+        torch.load('./models/model_latest_collect_five_shortterm_features_longterm_policy_no_conv3')
+    )
+
+    only_longterm_feature_layers_model = model(screen_channels=8, screen_resolution=[FLAGS.screen_resolution]*2).cuda(gpu_id)
+    only_longterm_feature_layers_model.load_state_dict(
+        torch.load('./models/model_latest_collect_five_longterm_features_nograft_spatial_policy')
+    )
+
+    only_longterm_policy_layers_model = model(screen_channels=8, screen_resolution=[FLAGS.screen_resolution]*2).cuda(gpu_id)
+    only_longterm_policy_layers_model.load_state_dict(
+        torch.load('./models/model_latest_collect_five_graft_longterm_without_longterm_features_no_conv3')
+    )
+
+    # long_term_grafted_extend_model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures(
+    #     screen_channels=8, screen_resolution=[FLAGS.screen_resolution]*2).cuda(gpu_id)
+    # long_term_grafted_extend_model.load_state_dict(
+    #     torch.load('./models/model_latest_collect_five_longterm_policy_extend_conv3')
+    # )
+
+    # long_term_model = FullyConv(screen_channels=8, screen_resolution=[FLAGS.screen_resolution] * 2).cuda(gpu_id)
+    # long_term_model.load_state_dict(torch.load('./models/task1_insert_no_op_steps_6_3070000/model_latest_insert_no_op_steps_6'))
+    #
+    # short_term_model = FullyConv(screen_channels=8, screen_resolution=[FLAGS.screen_resolution] * 2).cuda(gpu_id)
+    # short_term_model.load_state_dict(torch.load('./models/task1_insert_no_op_steps_3_3137102/model_latest_insert_no_op_steps_3'))
 
     # play with environment
     total_eps_reward = 0
@@ -140,40 +166,58 @@ def main(argv):
                     ))).cuda(gpu_id)
 
                     spatial_move_indicator = Variable(torch.ones(1, 1, 32, 32)).cuda(gpu_id)
-                    _, spatial_action_prob, value, spatial_softmax_policy \
+                    _, spatial_action_prob, value, policy1 \
                         = long_term_grafted_model(screen_observation, spatial_move_indicator)
 
-                    _, _, _, short_term_grafted_spatial_policy \
+                    _, _, _, policy2 \
                         = short_term_grafted_model(screen_observation, spatial_move_indicator)
 
-                    _, _, long_term_spatial_policy \
-                        = long_term_model(screen_observation)
+                    _, _, _, policy3 \
+                        = short_policy_long_features_model(screen_observation, spatial_move_indicator)
 
-                    _, _, short_term_spatial_policy \
-                        = short_term_model(screen_observation)
+                    _, _, _, policy4 \
+                        = long_policy_short_features_model(screen_observation, spatial_move_indicator)
+
+                    _, _, _, policy5 \
+                        = only_longterm_feature_layers_model(screen_observation, spatial_move_indicator)
+
+                    _, _, _, policy6 \
+                        = only_longterm_policy_layers_model(screen_observation, spatial_move_indicator)
 
                     # visualize spatial policy
-                    plt.figure()
-                    plt.subplot(121)
+                    plt.figure(figsize=(15, 9))
+                    plt.subplot(231)
                     plt.title('grafted from long-term')
-                    np_spatial = spatial_softmax_policy.data.cpu().numpy()
+                    np_spatial = policy1.data.cpu().numpy()
                     sns.heatmap(np_spatial, linewidths=0.5, cmap="YlGnBu")
-                    # plt.show()
 
-                    plt.subplot(122)
+                    plt.subplot(234)
                     plt.title('grafted from short-term')
-                    np_short_term_grafted = short_term_grafted_spatial_policy.data.cpu().numpy()
+                    np_short_term_grafted = policy2.data.cpu().numpy()
                     sns.heatmap(np_short_term_grafted, linewidths=0.5, cmap="YlGnBu")
+
+                    plt.subplot(232)
+                    plt.title('long-term features, short-term policy')
+                    np_policy3 = policy3.data.cpu().numpy()
+                    sns.heatmap(np_policy3, linewidths=0.5, cmap="YlGnBu")
+
+
+                    plt.subplot(235)
+                    plt.title('short-term features, long-term policy')
+                    np_policy4 = policy4.data.cpu().numpy()
+                    sns.heatmap(np_policy4, linewidths=0.5, cmap="YlGnBu")
+
+                    plt.subplot(233)
+                    plt.title('only long-term features')
+                    np_policy5 = policy5.data.cpu().numpy()
+                    sns.heatmap(np_policy5, linewidths=0.5, cmap="YlGnBu")
+
+                    plt.subplot(236)
+                    plt.title('only long-term policy')
+                    np_policy6 = policy6.data.cpu().numpy()
+                    sns.heatmap(np_policy6, linewidths=0.5, cmap="YlGnBu")
+
                     plt.show()
-
-                    # np_long_term = long_term_spatial_policy.data.cpu().numpy()
-                    # sns.heatmap(np_long_term, linewidths=0.5, cmap='YlGnBu')
-                    # plt.show()
-
-                    np_short_term = short_term_spatial_policy.data.cpu().numpy()
-                    # sns.heatmap(np_short_term, linewidths=0.5, cmap='YlGnBu')
-                    # plt.show()
-
 
                     spatial_action = spatial_action_prob.multinomial()
                     move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
