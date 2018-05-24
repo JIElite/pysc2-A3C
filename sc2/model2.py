@@ -12,6 +12,7 @@ class CollectFiveDropout(nn.Module):
 
         # train from scratch
         self.conv2 = nn.Conv2d(33, 32, kernel_size=(3, 3), stride=1, padding=1)
+        # nn.init.kaiming_normal(self.conv2.weight.data)
 
         # grafting
         self.spatial_policy = nn.Conv2d(32, 1, kernel_size=(1, 1))
@@ -24,9 +25,8 @@ class CollectFiveDropout(nn.Module):
     def forward(self, x, action_features, task_type):
         if task_type == 0:
             master_x = F.relu(self.conv_master(x))
-            master_x = F.dropout(master_x, p=1.0, training=self.training)
             sub_x = F.relu(self.conv_sub(x))
-            sub_x - F.dropout(sub_x, p=0.0, training=self.training)
+            sub_x - F.dropout2d(sub_x, p=0.95, training=self.training) * 0.05
 
             concat_feature_layers = torch.cat([master_x, sub_x, action_features], dim=1)
             x = F.relu(self.conv2(concat_feature_layers))
@@ -48,10 +48,8 @@ class CollectFiveDropout(nn.Module):
 
         elif task_type == 1:
             master_x = F.relu(self.conv_master(x))
-            master_x = F.dropout(master_x, p=0.0, training=self.training)
+            master_x = F.dropout2d(master_x, p=0.95, training=self.training) * 0.05
             sub_x = F.relu(self.conv_sub(x))
-            sub_x - F.dropout(sub_x, p=1.0, training=self.training)
-
             concat_feature_layers = torch.cat([master_x, sub_x, action_features], dim=1)
             x = F.relu(self.conv2(concat_feature_layers))
 
