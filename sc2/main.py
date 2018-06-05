@@ -55,6 +55,7 @@ def main(argv):
         model = FullyConvExtended
     else:
         model = FullyConv
+    print(model)
 
     shared_model = model(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     shared_model.share_memory()
