@@ -25,9 +25,9 @@ from train_hierarchy_collect_and_destroy import train_selection_policy
 
 FLAGS = flags.FLAGS
 # Game related settings
-flags.DEFINE_string("map", "CollectAndDestroy", "Name of a map to use.")
-flags.DEFINE_integer("screen_resolution", 32, "Resolution for screen feature layers.")
-flags.DEFINE_integer("minimap_resolution", 32, "Resolution for minimap feature layers.")
+flags.DEFINE_string("map", "CollectAndDestroyAirSCV", "Name of a map to use.")
+flags.DEFINE_integer("screen_resolution", 48, "Resolution for screen feature layers.")
+flags.DEFINE_integer("minimap_resolution", 48, "Resolution for minimap feature layers.")
 flags.DEFINE_bool("visualize", False, "Whether to render with pygame.")
 flags.DEFINE_integer("step_mul", 8, "Game steps per agent step.")
 flags.DEFINE_enum("agent_race", None, sc2_env.races.keys(), "Agent's race.")
@@ -61,13 +61,13 @@ def main(argv):
     # shared model
     selection_model = FullyConvSelectPolicy(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
     selection_model.share_memory()
-
+    #
     collect_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
-    collect_model.load_state_dict(torch.load('./models/task1_300s_original_16347668/model_best'))
+    collect_model.load_state_dict(torch.load('./collect_task_scv/model_latest_collect_scv_res48_no_op6'))
     collect_model.share_memory()
-
+    #
     destroy_model = FullyConv(screen_channels=8, screen_resolution=(FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda()
-    destroy_model.load_state_dict(torch.load('./destroy_buildings/model_latest_defeat2buildings_no_op2_2'))
+    destroy_model.load_state_dict(torch.load('./defeat_buildings_banshee/model_latest_defeat4buildings_res48'))
     destroy_model.share_memory()
 
     optimizer = SharedAdam(selection_model.parameters(), lr=FLAGS.learning_rate)

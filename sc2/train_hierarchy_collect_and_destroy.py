@@ -81,38 +81,38 @@ def train_selection_policy(worker_id, args, shared_model, optimizer, global_coun
                 masked_select_unit_action_prob = select_unit_action_prob * selection_mask
 
                 if float(masked_select_unit_action_prob.sum().cpu().data.numpy()) < 1e-12:
-                    print('normalize')
-                    print(selection_mask)
+                    # print('normalize')
                     masked_select_unit_action_prob += 1.0 * selection_mask
                     masked_select_unit_action_prob /= masked_select_unit_action_prob.sum()
-                    print('mask matrix:', selection_mask)
+                    # print('mask matrix:', selection_mask)
                 else:
                     masked_select_unit_action_prob = masked_select_unit_action_prob / masked_select_unit_action_prob.sum()
 
-                print('sum of masked action prob:', masked_select_unit_action_prob.sum())
-                print('-------------------------------------------------------------------------------')
-                select_action = masked_select_unit_action_prob.multinomial()
-                print(select_action)
+                # print('sum of masked action prob:', masked_select_unit_action_prob.sum())
+                # print('-------------------------------------------------------------------------------')
+                try:
+                    select_action = masked_select_unit_action_prob.multinomial()
+                except:
+                    print("Error detect!")
+                    print(masked_select_unit_action_prob)
+
+                # print(select_action)
 
                 # select task type
                 task = selected_task.multinomial()
-                # print('task:', task)
 
                 log_select_spatial_action_prob = torch.log(torch.clamp(masked_select_unit_action_prob, min=1e-12))
                 log_select_task_prob = torch.log(torch.clamp(selected_task, min=1e-12))
-                # print('long_task_prob:', log_select_task_prob)
 
                 # TODO verify derivative of this entropy
                 # select_entropy = - (log_select_spatial_action_prob * masked_select_unit_action_prob).sum(1)
                 # task_entropy = - (log_select_task_prob * selected_task).sum()
-                # print(task_entropy)
                 # entropy = select_entropy + task_entropy
 
 
                 chosen_unit_selection_log_action_prob = log_select_spatial_action_prob.gather(1, select_action)
                 chosen_task_selection_action_log_prob = log_select_task_prob[task]
                 chosen_action_log_prob = chosen_unit_selection_log_action_prob + chosen_task_selection_action_log_prob
-                # print('chosen task log prob:', chosen_action_log_prob)
 
                 # record n-step experience
                 # entropies.append(entropy)
@@ -127,10 +127,21 @@ def train_selection_policy(worker_id, args, shared_model, optimizer, global_coun
                     reward = np.asscalar(np.array([10]))
                 else:
                     reward = np.asscalar(np.array([-0.2]))
+                rewards.append(reward)
+                episode_reward += reward
+
+                episode_done = (episode_length >= args['max_eps_length']) or state.last()
+                if episode_done:
+                    episode_length = 0
+                    env.reset()
+                    state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
+                    break
+
 
                 task = int(task.cpu().data.numpy())
                 if task == 0 and _MOVE_SCREEN in state.observation['available_actions']:
                     # collection mineral shards
+                    # TODO volatile
                     screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                         timesteps=state,
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15],
@@ -138,11 +149,24 @@ def train_selection_policy(worker_id, args, shared_model, optimizer, global_coun
 
                     spatial_action_prob, value, _ = local_collect_model(screen_observation)
                     spatial_action = spatial_action_prob.multinomial()
+
                     action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
                     state = env.step([action])[0]
+                    # if state.reward > 1:
+                    #     reward = np.asscalar(np.array([10]))
+                    # else:
+                    #     reward = np.asscalar(np.array([-0.2]))
+
+                    # TODO learning
+                    # log_prob = torch.log(torch.clamp(spatial_action_prob, min=1e-12))
+                    # chosen_log_prob = log_prob.gather(1, spatial_action)
+                    # spatial_policy_log_probs.append(chosen_log_prob)
+                    # critic_values.append(value)
+                    # rewards.append(reward)
 
                 elif task == 1 and _RIGHT_CLICK in state.observation['available_actions']:
                     # destroy enemy's buildings
+                    # TODO volatile
                     screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                         timesteps=state,
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15],
@@ -150,18 +174,39 @@ def train_selection_policy(worker_id, args, shared_model, optimizer, global_coun
 
                     destroy_action_prob, value, _ = local_destroy_model(screen_observation)
                     destroy_position = destroy_action_prob.multinomial()
+
                     action = game_inferface.build_action(_RIGHT_CLICK, destroy_position[0].cpu())
                     state = env.step([action])[0]
+                    # if state.reward > 1:
+                    #     reward = np.asscalar(np.array([10]))
+                    # else:
+                    #     reward = np.asscalar(np.array([-0.2]))
+
+                    # TODO learning
+                    # log_prob = torch.log(torch.clamp(destroy_action_prob, min=1e-12))
+                    # chosen_log_prob = log_prob.gather(1, destroy_position)
+                    # spatial_policy_log_probs.append(chosen_log_prob)
+                    # critic_values.append(value)
+                    # rewards.append(reward)
+
                 else:
                     action = actions.FunctionCall(_NO_OP, [])
                     state = env.step([action])[0]
 
+                    # TODO learning
+                    # if state.reward > 1:
+                    #     reward = np.asscalar(np.array([10]))
+                    # else:
+                    #     reward = np.asscalar(np.array([-0.2]))
+                    # rewards[-1] += reward
+
+                # TODO unlearning
                 if state.reward > 1:
                     reward += np.asscalar(np.array([10]))
                 else:
                     reward += np.asscalar(np.array([-0.2]))
 
-                rewards.append(reward)
+                rewards[-1] += reward
                 episode_reward += reward
                 episode_length += 1
                 global_counter.value += 1
