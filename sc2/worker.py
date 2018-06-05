@@ -45,7 +45,10 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
     with env:
 
         if args['use_bn']:
-            network = FullyConvBN
+            if args['extend_model']:
+                network = None
+            else:
+                network = FullyConvBN
         else:
             if args['extend_model']:
                 network = FullyConvExtended
