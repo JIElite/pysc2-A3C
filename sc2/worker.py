@@ -9,7 +9,7 @@ from pysc2.lib import features
 
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
-from model import FullyConv, FullyConvExtended, FullyConvSelecAction
+from model import FullyConv, FullyConvExtended, FullyConvSelecAction, FullyConvBN
 from optimizer import ensure_shared_grad
 
 
@@ -44,13 +44,16 @@ def worker_fn(worker_id, args, shared_model, optimizer, global_counter, summary_
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'], minimap_resolution=args['minimap_resolution'])
     with env:
 
-        if args['extend_model']:
-            network = FullyConvExtended
+        if args['use_bn']:
+            network = FullyConvBN
         else:
-            network = FullyConv
+            if args['extend_model']:
+                network = FullyConvExtended
+            else:
+                network = FullyConv
 
         local_model = network(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda()
-
+        local_model.train()
 
         env.reset()
         state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
