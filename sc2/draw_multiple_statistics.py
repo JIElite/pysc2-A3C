@@ -13,22 +13,24 @@ parser.add_argument('--steps', dest='steps', default=None, help='display to num_
 args = parser.parse_args()
 
 
-with open('s1.pkl', 'rb') as fd, open('s2.pkl', 'rb') as fd2, \
-    open('./statistics/collect_five_new_nj_worker12_freeze_policy.pkl', 'rb') as fd3, \
-    open('./statistics/collect_five_new_nj_worker12_finetune_policy.pkl', 'rb') as fd4, \
-    open('./statistics/collect_five_new_nj_worker12_freeze_policy_2.pkl', 'rb') as fd5:
-    data = pickle.load(fd)
-    data2 = pickle.load(fd2)
-    data3 = pickle.load(fd3)
-    data4 = pickle.load(fd4)
-    data5 = pickle.load(fd5)
+with open('./statistics_collect_five_with_action_6.pkl', 'rb') as fd, \
+    open('./collect_five_new_nj_worker12_freeze_policy_extend_conv3/statistics/8.pkl', 'rb') as fd2, \
+    open('./collect_five_baseline/statistics/statistics_new_baseline_with_action_extend_conv3.pkl', 'rb') as fd3, \
+    open('./collect_five_new_nj_worker12_freeze_policy_extend_conv3/statistics/ten_run.pkl', 'rb') as fd4:
+        data = pickle.load(fd)
+        data2 = pickle.load(fd2)
+        data3 = pickle.load(fd3)
+        data4 = pickle.load(fd4)
 
-end_of_steps = 300
-plt.plot(data['recent_100_mean_perf'][:end_of_steps], label='from scratch')
-plt.plot(data2['recent_100_mean_perf'][:end_of_steps], label='new finetune')
-plt.plot(data3['recent_100_mean_perf'][:end_of_steps], label='freeze') 
-plt.plot(data4['recent_100_mean_perf'][:end_of_steps], label='finetune')
-plt.plot(data5['recent_100_mean_perf'][:end_of_steps], label='freeze2')
+if args.steps is None:
+    end_of_steps = len(data['recent_100_mean_perf'])
+else:
+    end_of_steps = int(args.steps)
+
+plt.plot(data['recent_100_mean_perf'][:end_of_steps], label='grafted')
+plt.plot(data2['recent_100_mean_perf'][:end_of_steps], label='grafted extend 1 conv')
+plt.plot(data3['recent_100_mean_perf'][:end_of_steps], label='single model baseline extend 1 conv')
+plt.plot(data4['recent_100_mean_perf'][:end_of_steps], label='grafted extend 1 conv (10 runs)')
 plt.legend(loc='lower right')
 plt.ylabel('average return')
 plt.xlabel('steps (1e4)')
