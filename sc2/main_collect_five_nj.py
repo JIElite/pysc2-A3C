@@ -118,8 +118,8 @@ def main(argv):
 
     shared_model.conv_master.load_state_dict(pretrained_master.conv1.state_dict())
     shared_model.conv_sub.load_state_dict(long_term_model.conv1.state_dict())
-    shared_model.spatial_policy.load_state_dict(long_term_model.spatial_policy.state_dict())
     shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
+    shared_model.spatial_policy.load_state_dict(long_term_model.spatial_policy.state_dict())
 
     # freeze_layers(shared_model.conv_master)
     # freeze_layers(shared_model.conv_sub)
