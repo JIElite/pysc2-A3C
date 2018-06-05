@@ -102,10 +102,10 @@ def main(argv):
     #     './models/task1_300s_original_16347668/model_best'
     # ))
 
-    long_term_policy = FullyConv(screen_channels=8, screen_resolution=(
+    long_term_model = FullyConv(screen_channels=8, screen_resolution=(
         FLAGS.screen_resolution, FLAGS.screen_resolution))
-    long_term_policy.load_state_dict(torch.load(
-        './models/task1_insert_no_op_steps_6_3070000/model_latest_insert_no_op_steps_6'
+    long_term_model.load_state_dict(torch.load(
+        './models/task1_insert_no_op_steps_6_3070000/model_latest'
     ))
 
 
@@ -117,10 +117,10 @@ def main(argv):
             FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
 
     shared_model.conv_master.load_state_dict(pretrained_master.conv1.state_dict())
-    shared_model.conv_sub.load_state_dict(long_term_policy.conv1.state_dict())
-    shared_model.spatial_policy.load_state_dict(long_term_policy.spatial_policy.state_dict())
+    shared_model.conv_sub.load_state_dict(long_term_model.conv1.state_dict())
+    shared_model.spatial_policy.load_state_dict(long_term_model.spatial_policy.state_dict())
     shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
-    shared_model.train()
+
     # freeze_layers(shared_model.conv_master)
     # freeze_layers(shared_model.conv_sub)
     # freeze_layers(shared_model.spatial_policy)

@@ -258,6 +258,7 @@ def train_conjunction_with_action_features(
                 policy_loss += -(
                             policy_log_for_action * Variable(gae_ts, requires_grad=False) + 0.01 * entropies[i])
 
+
             optimizer.zero_grad()
             total_loss = policy_loss + 0.5 * value_loss
             total_loss.backward()

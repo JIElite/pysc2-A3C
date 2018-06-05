@@ -43,8 +43,8 @@ class FullyConvExtended(nn.Module):
     def __init__(self, screen_channels, screen_resolution):
         super(FullyConvExtended, self).__init__()
         self.conv1 = nn.Conv2d(screen_channels, 16, kernel_size=(5, 5), stride=1, padding=2)
-        self.conv2 = nn.Conv2d(16, 32, kernel_size=(3, 3), stride=1, padding=1)
-        self.conv3 = nn.Conv2d(32, 32, kernel_size=(3, 3), stride=1, padding=1)
+        self.conv2 = nn.Conv2d(16, 16, kernel_size=(3, 3), stride=1, padding=1)
+        self.conv3 = nn.Conv2d(16, 32, kernel_size=(3, 3), stride=1, padding=1)
         self.spatial_policy = nn.Conv2d(32, 1, kernel_size=(1, 1))
 
         self.non_spatial_branch = nn.Linear(screen_resolution[0] * screen_resolution[1] * 32, 256)
