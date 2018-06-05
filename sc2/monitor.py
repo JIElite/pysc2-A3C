@@ -23,9 +23,9 @@ def evaluator(summary_queue, shared_model, optimizer,
 
     num_of_eps = 0
     sum_of_eps_return = 0.0
-    best_mean_perf = 0.0
+    best_mean_perf = -999
     recent_perf_queue = deque(maxlen=100)
-    recent_100_best_mean_perf = 0.0
+    recent_100_best_mean_perf = -999
 
     evaluation_steps = 10000
 
