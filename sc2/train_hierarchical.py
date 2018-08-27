@@ -92,37 +92,56 @@ def train_master(worker_id, args, shared_model, optimizer, global_counter, summa
                 log_select_spatial_action_prob = torch.log(torch.clamp(masked_select_spatial_action_prob, min=1e-12))
                 select_entropy = - (log_select_spatial_action_prob * masked_select_spatial_action_prob).sum(1)
                 master_log_action_prob = log_select_spatial_action_prob.gather(1, select_action)
+
+                # Step
+                action = game_inferface.build_action(_SELECT_POINT, select_action[0].cpu())
+                state = env.step([action])[0]
+
                 # record n-step experience
                 entropies.append(select_entropy)
                 spatial_policy_log_probs.append(master_log_action_prob)
                 critic_values.append(value)
 
-                # Step
-                action = game_inferface.build_action(_SELECT_POINT, select_action[0].cpu())
-                state = env.step([action])[0]
                 temp_reward = np.asscalar(state.reward)
+                rewards.append(temp_reward)
+                episode_reward += temp_reward
 
                 # sub agent step
                 if _MOVE_SCREEN in state.observation['available_actions']:
                     # sub model decision
+                    # TODO volatile
                     screen_observation = Variable(torch.from_numpy(game_inferface.get_screen_obs(
                         timesteps=state,
                         indexes=[4, 5, 6, 7, 8, 9, 14, 15],
-                    )), volatile=True).cuda()
+                    ))).cuda()
 
                     spatial_action_prob, value, _ = local_sub_model(screen_observation)
                     spatial_action = spatial_action_prob.multinomial()
                     action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
                     state = env.step([action])[0]
+
+                    log_prob = torch.log(torch.clamp(spatial_action_prob, min=1e-12))
+                    chosen_log_prob = log_prob.gather(1, spatial_action)
+                    entropy = - (log_prob * spatial_action_prob).sum(1)
+
+                    spatial_policy_log_probs.append(chosen_log_prob)
+                    entropies.append(entropy)
+                    critic_values.append(value)
+
+                    temp_reward = np.asscalar(state.reward)
+                    rewards.append(temp_reward)
+                    episode_reward += temp_reward
+
                 else:
                     action = actions.FunctionCall(_NO_OP, [])
                     state = env.step([action])[0]
-
-                temp_reward += np.asscalar(state.reward)
+                    temp_reward = np.asscalar(state.reward)
+                    rewards[-1] += temp_reward
+                    episode_reward += temp_reward
 
                 # update episodic information
-                rewards.append(temp_reward)
-                episode_reward += temp_reward
+                # rewards.append(temp_reward)
+                # episode_reward += temp_reward
                 episode_length += 1
                 global_counter.value += 1
 

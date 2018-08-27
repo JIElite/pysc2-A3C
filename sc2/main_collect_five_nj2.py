@@ -10,19 +10,11 @@ import torch.multiprocessing as mp
 
 from model import (
     FullyConv,
-    Grafting_MultiunitCollect,
-    ExtendConv3Grafting_MultiunitCollect,
-    Grafting_MultiunitCollect_WithActionFeatures,
-    ExtendConv3Grafting_MultiunitCollect_WithActionFeatures,
-    MultiInputSinglePolicyNet,
-    MultiInputSinglePolicyNetExtendConv3,
 )
-from model2 import CollectFiveDropout, CollectFiveDropoutConv3, CollectFiveDropoutConv4
+from model2 import MultiFeaturesGrafting
 from optimizer import SharedAdam
 from monitor import evaluator
-
-from train_hierarchical import train_conjunction
-from train_collect_five_nj import train_conjunction_with_action_features
+from train_collect_five_nj2 import train_conjunction_with_action_features
 from utils import freeze_layers
 
 
@@ -48,8 +40,8 @@ flags.DEFINE_float("tau", 1.0, "tau for GAE")
 flags.DEFINE_boolean("multiple_gpu", False, "use multiple gpu or single gpu")
 flags.DEFINE_integer("gpu", 0, "gpu device")
 flags.DEFINE_boolean("extend_model", False, "using extended model or not")
-flags.DEFINE_integer("version", 2, "model type")
-flags.DEFINE_boolean("short_term", False, "long-term collection policy or short-term")
+flags.DEFINE_boolean("freeze", False, "using extended model or not")
+flags.DEFINE_boolean("transfer_all", True, "using extended model or not")
 # statistical postfix
 flags.DEFINE_string("postfix", "", "postfix of training data")
 FLAGS(sys.argv)
@@ -65,31 +57,7 @@ def main(argv):
     global_counter = mp.Value('i', 0)
     summary_queue = mp.Queue()
 
-
-    if FLAGS.version == 1:
-        if FLAGS.extend_model:
-            model = ExtendConv3Grafting_MultiunitCollect
-        else:
-            model = Grafting_MultiunitCollect
-    elif FLAGS.version == 2:
-        if FLAGS.extend_model:
-            model = ExtendConv3Grafting_MultiunitCollect_WithActionFeatures
-        else:
-            model = Grafting_MultiunitCollect_WithActionFeatures
-    elif FLAGS.version == 3:
-        if FLAGS.extend_model:
-            model = MultiInputSinglePolicyNetExtendConv3
-        else:
-            model = MultiInputSinglePolicyNet
-    elif FLAGS.version == 4:
-        # dropout net
-        if FLAGS.extend_model:
-            # model = CollectFiveDropoutConv3
-            model = CollectFiveDropoutConv4
-        else:
-            model = CollectFiveDropout
-
-    print("Model type:", model)
+    model = MultiFeaturesGrafting
     # share model
     use_multiple_gpu = FLAGS.multiple_gpu
 
@@ -99,18 +67,17 @@ def main(argv):
         './models/collect_five_hierarchical_with_mask_10016017/model_best'
     ))
 
-    if FLAGS.short_term:
-        pretrained_sub = FullyConv(screen_channels=8, screen_resolution=(
-            FLAGS.screen_resolution, FLAGS.screen_resolution))
-        pretrained_sub.load_state_dict(torch.load(
-            './models/task1_300s_original_16347668/model_best'
-        ))
-    else:
-        long_term_model = FullyConv(screen_channels=8, screen_resolution=(
-            FLAGS.screen_resolution, FLAGS.screen_resolution))
-        long_term_model.load_state_dict(torch.load(
-            './models/task1_insert_no_op_steps_6_3070000/model_latest'
-        ))
+    # pretrained_sub = FullyConv(screen_channels=8, screen_resolution=(
+    #     FLAGS.screen_resolution, FLAGS.screen_resolution))
+    # pretrained_sub.load_state_dict(torch.load(
+    #     './models/task1_300s_original_16347668/model_best'
+    # ))
+
+    long_term_model = FullyConv(screen_channels=8, screen_resolution=(
+        FLAGS.screen_resolution, FLAGS.screen_resolution))
+    long_term_model.load_state_dict(torch.load(
+        './models/task1_insert_no_op_steps_6_3070000/model_latest'
+    ))
 
 
     if use_multiple_gpu:
@@ -120,21 +87,25 @@ def main(argv):
         shared_model = model(screen_channels=8, screen_resolution=(
             FLAGS.screen_resolution, FLAGS.screen_resolution)).cuda(FLAGS.gpu)
 
-    shared_model.train()
-    shared_model.conv_master.load_state_dict(pretrained_master.conv1.state_dict())
-    shared_model.select_unit.load_state_dict(pretrained_master.spatial_policy.state_dict())
-
-    if FLAGS.short_term:
-        shared_model.conv_sub.load_state_dict(pretrained_sub.conv1.state_dict())
-        shared_model.spatial_policy.load_state_dict(pretrained_sub.spatial_policy.state_dict())
+    if FLAGS.transfer_all:
+        shared_model.select_conv1.load_state_dict(pretrained_master.conv1.state_dict())
+        shared_model.select_conv2.load_state_dict(pretrained_master.conv2.state_dict())
+        shared_model.collect_conv1.load_state_dict(long_term_model.conv1.state_dict())
+        shared_model.collect_conv2.load_state_dict(long_term_model.conv2.state_dict())
     else:
-        shared_model.conv_sub.load_state_dict(long_term_model.conv1.state_dict())
-        shared_model.spatial_policy.load_state_dict(long_term_model.spatial_policy.state_dict())
+        shared_model.collect_conv1.load_state_dict(long_term_model.conv1.state_dict())
+        shared_model.collect_conv2.load_state_dict(long_term_model.conv2.state_dict())
 
-    # freeze_layers(shared_model.conv_master)
-    # freeze_layers(shared_model.conv_sub)
-    # freeze_layers(shared_model.spatial_policy)
-    # freeze_layers(shared_model.select_unit)
+
+    if FLAGS.freeze:
+        freeze_layers(shared_model.select_conv1)
+        freeze_layers(shared_model.select_conv2)
+        freeze_layers(shared_model.collect_conv1)
+        freeze_layers(shared_model.collect_conv2)
+    else:
+        freeze_layers(shared_model.collect_conv1)
+        freeze_layers(shared_model.collect_conv2)
+
 
 
     shared_model.share_memory()
@@ -149,9 +120,6 @@ def main(argv):
     evaluate_worker.start()
     worker_list.append(evaluate_worker)
 
-    # training
-    # training_func = train_conjunction
-    # if FLAGS.with_action:
     training_func = train_conjunction_with_action_features
     for worker_id in range(FLAGS.num_of_workers):
         worker = mp.Process(target=training_func,

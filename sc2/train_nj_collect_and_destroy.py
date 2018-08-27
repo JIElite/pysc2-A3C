@@ -8,7 +8,16 @@ from pysc2.lib import features
 
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
-from model2 import CollectAndDestroyGraftingNet, CollectAndDestroyGraftingDropoutNet, CollectAndDestroyBaseline
+from model2 import (
+    CollectAndDestroyGraftingNet,
+    CollectAndDestroyGraftingDropoutNet,
+    CollectAndDestroyGraftingDropoutNetWOBN,
+    CollectAndDestroyGraftingDropoutNetConv4,
+    CollectAndDestroyGraftingDropoutNetConv6,
+    CollectAndDestroyBaseline,
+    CollectAndDestroyGraftingDropoutNetBN,
+    CollectAndDestroyGraftingDropoutNetNoBN
+)
 from optimizer import ensure_shared_grad
 from utils import freeze_layers
 
@@ -53,7 +62,16 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
         elif args['version'] == 1:
             model = CollectAndDestroyGraftingDropoutNet
         elif args['version'] == 2:
+            model = CollectAndDestroyGraftingDropoutNetBN
+        elif args['version'] == 3:
             model = CollectAndDestroyBaseline
+        elif args['version'] == 4:
+            # model = CollectAndDestroyGraftingDropoutNetConv6
+            model = CollectAndDestroyGraftingDropoutNetConv4
+        elif args['version'] == 5:
+            model = CollectAndDestroyGraftingDropoutNetNoBN
+        elif args['version'] == 6:
+            model = CollectAndDestroyGraftingDropoutNetWOBN
 
         local_model = model(screen_channels=8, screen_resolution=[args['screen_resolution']]*2).cuda(args['gpu'])
         local_model.train()
@@ -67,15 +85,15 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
         while True:
             # Sync the parameters with shared model
             local_model.load_state_dict(shared_selection_model.state_dict())
-            if args['version'] == 1:
-                local_model.anneal_dropout_rate()
+
+            # if args['version'] == 1 or args['version'] == 2 or args['version'] == 6:
+            #     local_model.anneal_dropout_rate()
 
             # Reset n-step experience buffer
             entropies = []
             critic_values = []
             spatial_policy_log_probs = []
             rewards = []
-
 
             # step forward n steps
             for step in range(args['n_steps']):
@@ -95,10 +113,8 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
                 masked_select_unit_action_prob = select_unit_action_prob * selection_mask
 
                 if float(masked_select_unit_action_prob.sum().cpu().data.numpy()) < 1e-12:
-                    # print('normalize')
                     masked_select_unit_action_prob += 1.0 * selection_mask
                     masked_select_unit_action_prob /= masked_select_unit_action_prob.sum()
-                    # print('mask matrix:', selection_mask)
                 else:
                     masked_select_unit_action_prob = masked_select_unit_action_prob / masked_select_unit_action_prob.sum()
 
@@ -110,8 +126,6 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
                     print("Error detect!")
                     print(masked_select_unit_action_prob)
 
-                # print(select_action)
-
                 # select task type
                 task = selected_task.multinomial()
 
@@ -119,10 +133,10 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
                 log_select_task_prob = torch.log(torch.clamp(selected_task, min=1e-12))
 
                 # TODO verify derivative of this entropy
-                select_entropy = - (log_select_spatial_action_prob * masked_select_unit_action_prob).sum(1)
-                # task_entropy = - (log_select_task_prob * selected_task * masked_select_unit_action_prob).sum()
+                # select_entropy = - (log_select_spatial_action_prob * masked_select_unit_action_prob).sum(1)
+                # task_entropy = - (log_select_task_prob * selected_task).sum()
                 # entropy = select_entropy + task_entropy
-                entropy = select_entropy
+                # entropy = select_entropy
 
 
                 chosen_unit_selection_log_action_prob = log_select_spatial_action_prob.gather(1, select_action)
@@ -130,7 +144,7 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
                 chosen_action_log_prob = chosen_unit_selection_log_action_prob + chosen_task_selection_action_log_prob
 
                 # record n-step experience
-                entropies.append(entropy)
+                # entropies.append(entropy)
                 spatial_policy_log_probs.append(chosen_action_log_prob)
                 critic_values.append(value)
 
@@ -250,13 +264,13 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
 
                 td_error = rewards[i] + args['gamma'] * critic_values[i+1].data - critic_values[i].data
                 gae_ts = gae_ts * args['gamma'] * args['tau'] + td_error
-                # policy_loss += -(spatial_policy_log_probs[i] * Variable(gae_ts, requires_grad=False) + 0.05 *entropies[i])
+                # policy_loss += -(spatial_policy_log_probs[i] * Variable(gae_ts, requires_grad=False) + 0.01 *entropies[i])
                 policy_loss += -(spatial_policy_log_probs[i] * Variable(gae_ts, requires_grad=False))
 
             optimizer.zero_grad()
             total_loss = policy_loss + 0.5 * value_loss
             total_loss.backward()
-            torch.nn.utils.clip_grad_norm(local_model.parameters(), 40)
+            torch.nn.utils.clip_grad_norm(local_model.parameters(), args['clip_grad'])
             ensure_shared_grad(local_model, shared_selection_model)
             optimizer.step()
 

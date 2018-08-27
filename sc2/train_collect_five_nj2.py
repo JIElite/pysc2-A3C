@@ -10,15 +10,9 @@ from pysc2.lib import features
 
 from envs import GameInterfaceHandler
 from envs import create_pysc2_env
-from model import (
-    CollectFiveBaselineWithActionFeatures,
-    CollectFiveBaselineWithActionFeaturesV2,
-    CollectFiveBaselineWithActionFeaturesExtendConv3,
-    CollectFiveBaselineWithActionFeaturesExtendConv3V2,
-    FullyConvWithActionIndicator,
-    FullyConvExtendConv3WithActionIndicator,
-)
+from model2 import MultiFeaturesGrafting
 from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
+from utils import freeze_layers
 
 torch.set_printoptions(threshold=5000)
 
@@ -39,7 +33,7 @@ _SCREEN_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 
 
 
-def train_baseline_with_action_features(
+def train_conjunction_with_action_features(
     worker_id, args, shared_model, optimizer, global_counter, summary_queue):
     torch.manual_seed(args['seed'] + worker_id)
     env_args = {
@@ -54,25 +48,19 @@ def train_baseline_with_action_features(
     env = create_pysc2_env(env_args)
     game_inferface = GameInterfaceHandler(screen_resolution=args['screen_resolution'],
                                           minimap_resolution=args['minimap_resolution'])
-    if args['version'] == 1:
-        if args['extend_model']:
-            model = CollectFiveBaselineWithActionFeaturesExtendConv3
-        else:
-            model = CollectFiveBaselineWithActionFeatures
-    elif args['version'] == 2:
-        if args['extend_model']:
-            model = CollectFiveBaselineWithActionFeaturesExtendConv3V2
-        else:
-            model = CollectFiveBaselineWithActionFeaturesV2
-    elif args['version'] == 3:
-        if args['extend_model']:
-            model = FullyConvExtendConv3WithActionIndicator
-        else:
-            model = FullyConvWithActionIndicator
+
+    model = MultiFeaturesGrafting
 
     gpu_id = args['gpu']
     with env:
         local_model = model(screen_channels=8, screen_resolution=[args['screen_resolution']] * 2).cuda(gpu_id)
+        local_model.train()
+
+        if args['freeze']:
+            freeze_layers(shared_model.select_conv1)
+            freeze_layers(shared_model.select_conv2)
+            freeze_layers(shared_model.collect_conv1)
+            freeze_layers(shared_model.collect_conv2)
 
         env.reset()
         state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
@@ -83,7 +71,7 @@ def train_baseline_with_action_features(
         while True:
             # Sync the parameters with shared model
             local_model.load_state_dict(shared_model.state_dict())
-
+            local_model.train()
             # Reset n-step experience buffer
             entropies = []
             critic_values = []
@@ -98,10 +86,9 @@ def train_baseline_with_action_features(
                 ))).cuda(gpu_id)
 
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
-                if args['version'] < 3:
-                    select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
-                else:
-                    select_action_prob, value, _ = local_model(screen_observation, select_indicator)
+
+                # forward
+                select_action_prob, _, value, _ = local_model(screen_observation, select_indicator)
 
                 # mask select action
                 selection_mask = torch.from_numpy(
@@ -122,11 +109,11 @@ def train_baseline_with_action_features(
 
                 # Step
                 state = env.step([select_action])[0]
-                # reward = np.asscalar(state.reward)
                 if state.reward > 1:
                     reward = np.asscalar(np.array([10]))
                 else:
                     reward = np.asscalar(np.array([-0.2]))
+                # reward = np.asscalar(np.array([state.reward]))
                 episode_reward += reward
 
                 entropies.append(select_entropy)
@@ -150,10 +137,9 @@ def train_baseline_with_action_features(
                     ))).cuda(gpu_id)
 
                     spatial_move_indicator = Variable(torch.ones(1, 1, 32, 32)).cuda(gpu_id)
-                    if args['version'] < 3:
-                        _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
-                    else:
-                        spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
+
+                    # forward
+                    _, spatial_action_prob, value, _ = local_model(screen_observation, spatial_move_indicator)
 
                     spatial_action = spatial_action_prob.multinomial()
                     move_action = game_inferface.build_action(_MOVE_SCREEN, spatial_action[0].cpu())
@@ -165,11 +151,11 @@ def train_baseline_with_action_features(
                     chosen_log_policy_prob += chosen_log_spatial_action_prob
 
                     state = env.step([move_action])[0]
-                    # reward = np.asscalar(state.reward)
                     if state.reward > 1:
                         reward = np.asscalar(np.array([10]))
                     else:
                         reward = np.asscalar(np.array([-0.2]))
+                    # reward = np.asscalar(np.array([state.reward]))
                     episode_reward += reward
 
                     entropies.append(spatial_entropy)
@@ -178,7 +164,12 @@ def train_baseline_with_action_features(
                     rewards.append(reward)
                 else:
                     state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
-                    reward = np.asscalar(state.reward)
+                    # if isinstance(state.reward, int):
+                    #     reward = np.asscalar(np.array([state.reward]))
+                    # else:
+                    #     reward = np.asscalar(state.reward)
+                    reward = np.asscalar(np.array([state.reward]))
+
                     rewards[-1] += reward
                     episode_reward += reward
                     with open('log.txt', 'a') as fd:
@@ -203,12 +194,11 @@ def train_baseline_with_action_features(
                     timesteps=state,
                     indexes=[4, 5, 6, 7, 8, 9, 14, 15]
                 ))).cuda(gpu_id)
+
                 select_indicator = Variable(torch.zeros(1, 1, 32, 32)).cuda(gpu_id)
 
-                if args['version'] < 3:
-                    _, _, value, _ = local_model(screen_observation, select_indicator)
-                else:
-                    _, value, _ = local_model(screen_observation, select_indicator)
+                # forward
+                _, _, value, _ = local_model(screen_observation, select_indicator)
 
                 R_t = value.data
 
@@ -229,6 +219,7 @@ def train_baseline_with_action_features(
                 policy_log_for_action = chosen_log_policy_probs[i]
                 policy_loss += -(
                             policy_log_for_action * Variable(gae_ts, requires_grad=False) + 0.01 * entropies[i])
+
 
             optimizer.zero_grad()
             total_loss = policy_loss + 0.5 * value_loss

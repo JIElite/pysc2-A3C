@@ -1,0 +1,6 @@
+python main_collect_five_nj.py --num_of_workers 10 --gpu 0 --extend_model True --version 4 --short_term False --map CollectMineralShardsFiveExtendedVersion2 --max_steps 2505000 --postfix _collect_five_sparse_long_term_ngn_conv4_wo_annealing_6
+python main_collect_five_nj.py --num_of_workers 10 --gpu 0 --extend_model True --version 4 --short_term False --map CollectMineralShardsFiveExtendedVersion2 --max_steps 2505000 --postfix _collect_five_sparse_long_term_ngn_conv4_wo_annealing_7
+python main_collect_five_nj.py --num_of_workers 10 --gpu 0 --extend_model True --version 4 --short_term False --map CollectMineralShardsFiveExtendedVersion2 --max_steps 2505000 --postfix _collect_five_sparse_long_term_ngn_conv4_wo_annealing_8
+python main_collect_five_nj.py --num_of_workers 10 --gpu 0 --extend_model True --version 4 --short_term False --map CollectMineralShardsFiveExtendedVersion2 --max_steps 2505000 --postfix _collect_five_sparse_long_term_ngn_conv4_wo_annealing_9
+python main_collect_five_nj.py --num_of_workers 10 --gpu 0 --extend_model True --version 4 --short_term False --map CollectMineralShardsFiveExtendedVersion2 --max_steps 2505000 --postfix _collect_five_sparse_long_term_ngn_conv4_wo_annealing_10
+

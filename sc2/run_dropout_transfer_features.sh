@@ -1,0 +1,10 @@
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_11
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_12
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_13
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_14
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_15
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_16
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_17
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_18
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_19
+python main_collect_five_nj.py --num_of_workers 11 --version 4 --gpu 1 --max_steps 2005000 --map CollectMineralShardsFiveExtendedVersion2 --postfix _dropout_transfer_features_20

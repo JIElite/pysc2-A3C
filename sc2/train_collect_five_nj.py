@@ -18,7 +18,7 @@ from model import (
     MultiInputSinglePolicyNet,
     MultiInputSinglePolicyNetExtendConv3,
 )
-from model2 import CollectFiveDropout, CollectFiveDropoutConv3
+from model2 import CollectFiveDropout, CollectFiveDropoutConv3, CollectFiveDropoutConv4
 from optimizer import ensure_shared_grad, ensure_shared_grad_cpu
 from utils import freeze_layers
 
@@ -74,7 +74,7 @@ def train_conjunction_with_action_features(
             model = MultiInputSinglePolicyNet
     elif args['version'] == 4:
         if args['extend_model']:
-            model = CollectFiveDropoutConv3
+            model = CollectFiveDropoutConv4
         else:
             model = CollectFiveDropout
 
@@ -96,8 +96,8 @@ def train_conjunction_with_action_features(
         while True:
             # Sync the parameters with shared model
             local_model.load_state_dict(shared_model.state_dict())
-            if args['version'] == 4:
-                local_model.anneal_dropout()
+            # if args['version'] == 4:
+            #     local_model.anneal_dropout()
 
             # Reset n-step experience buffer
             entropies = []
@@ -140,11 +140,11 @@ def train_conjunction_with_action_features(
 
                 # Step
                 state = env.step([select_action])[0]
-                # if state.reward > 1:
-                #     reward = np.asscalar(np.array([10]))
-                # else:
-                #     reward = np.asscalar(np.array([-0.2]))
-                reward = np.asscalar(np.array([state.reward]))
+                if state.reward > 1:
+                    reward = np.asscalar(np.array([10]))
+                else:
+                    reward = np.asscalar(np.array([-0.2]))
+                # reward = np.asscalar(np.array([state.reward]))
                 episode_reward += reward
 
                 entropies.append(select_entropy)
@@ -187,11 +187,11 @@ def train_conjunction_with_action_features(
                     chosen_log_policy_prob += chosen_log_spatial_action_prob
 
                     state = env.step([move_action])[0]
-                    # if state.reward > 1:
-                    #     reward = np.asscalar(np.array([10]))
-                    # else:
-                    #     reward = np.asscalar(np.array([-0.2]))
-                    reward = np.asscalar(np.array([state.reward]))
+                    if state.reward > 1:
+                        reward = np.asscalar(np.array([10]))
+                    else:
+                        reward = np.asscalar(np.array([-0.2]))
+                    # reward = np.asscalar(np.array([state.reward]))
                     episode_reward += reward
 
                     entropies.append(spatial_entropy)
@@ -200,11 +200,12 @@ def train_conjunction_with_action_features(
                     rewards.append(reward)
                 else:
                     state = env.step([actions.FunctionCall(_NO_OP, [])])[0]
-                    if isinstance(state.reward, int):
-                        reward = np.asscalar(np.array([state.reward]))
-                    else:
-                        reward = np.asscalar(state.reward)
-                    # reward = np.asscalar(np.array([state.reward]))
+                    print(state.reward)
+                    # if isinstance(state.reward, int):
+                    #     reward = np.asscalar(np.array([state.reward]))
+                    # else:
+                    #     reward = np.asscalar(state.reward)
+                    reward = np.asscalar(np.array([state.reward]))
 
                     rewards[-1] += reward
                     episode_reward += reward

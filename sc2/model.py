@@ -115,13 +115,13 @@ class FullyConvWithActionIndicator(nn.Module):
         self.value = nn.Linear(256, 1)
 
         # init weight
-        nn.init.xavier_uniform(self.conv1.weight.data)
-        nn.init.xavier_uniform(self.conv2.weight.data)
-        nn.init.xavier_uniform(self.spatial_policy.weight.data)
-        nn.utils.weight_norm(self.non_spatial_branch)
-        nn.utils.weight_norm(self.value)
-        self.non_spatial_branch.bias.data.fill_(0)
-        self.value.bias.data.fill_(0)
+        # nn.init.xavier_uniform(self.conv1.weight.data)
+        # nn.init.xavier_uniform(self.conv2.weight.data)
+        # nn.init.xavier_uniform(self.spatial_policy.weight.data)
+        # nn.utils.weight_norm(self.non_spatial_branch)
+        # nn.utils.weight_norm(self.value)
+        # self.non_spatial_branch.bias.data.fill_(0)
+        # self.value.bias.data.fill_(0)
 
     def forward(self, x, action_indicator):
         x = torch.cat([x, action_indicator], dim=1)
