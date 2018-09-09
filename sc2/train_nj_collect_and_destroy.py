@@ -86,8 +86,10 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
             # Sync the parameters with shared model
             local_model.load_state_dict(shared_selection_model.state_dict())
 
-            # if args['version'] == 1 or args['version'] == 2 or args['version'] == 6:
-            #     local_model.anneal_dropout_rate()
+            # Anneal the dropout rate or not
+            if args['annealing']:
+                if args['version'] == 1 or args['version'] == 2 or args['version'] == 6:
+                    local_model.anneal_dropout_rate()
 
             # Reset n-step experience buffer
             entropies = []
@@ -270,7 +272,10 @@ def train_policy(worker_id, args, shared_model, optimizer, global_counter, summa
             optimizer.zero_grad()
             total_loss = policy_loss + 0.5 * value_loss
             total_loss.backward()
-            torch.nn.utils.clip_grad_norm(local_model.parameters(), args['clip_grad'])
+
+            if args['clipping']:
+                torch.nn.utils.clip_grad_norm(local_model.parameters(), args['clip_grad'])
+
             ensure_shared_grad(local_model, shared_selection_model)
             optimizer.step()
 
