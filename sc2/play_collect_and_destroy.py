@@ -2,7 +2,7 @@ from itertools import count
 import time
 import sys
 import os
-os.environ['OMP_NUM_THREADS']='1'
+os.environ['OMP_NUM_THREADS']='1' #???
 
 from absl import app, flags
 from pysc2.env import sc2_env
@@ -56,7 +56,7 @@ _SCREEN_PLAYER_RELATIVE = features.SCREEN_FEATURES.player_relative.index
 
 
 # torch.cuda.set_device(FLAGS.gpu)
-torch.cuda.set_device(1)
+torch.cuda.set_device(0)
 print("CUDA device:", torch.cuda.current_device())
 
 

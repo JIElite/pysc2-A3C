@@ -1,6 +1,6 @@
 import sys
 import os
-os.environ['OMP_NUM_THREADS']='1'
+#os.environ['OMP_NUM_THREADS']='1'
 
 from absl import app, flags
 from pysc2 import maps
@@ -47,6 +47,7 @@ print("CUDA device:", torch.cuda.current_device())
 def main(argv):
     # global settings
     mp.set_start_method('spawn')
+    maps.mini_games.mini_games.append("CollectMineralShardsSingleExtended")
     maps.get(FLAGS.map)
     global_counter = mp.Value('i', 0)
     summary_queue = mp.Queue()

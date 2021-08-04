@@ -1,0 +1,10 @@
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_1
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_2
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_3
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_4
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_5
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_6
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_7
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_8
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_9
+python main_collect_five_nj.py --num_of_workers 11 --version 3 --map CollectMineralShardsFiveExtendedVersion2 --gpu 0 --max_steps 2005000 --postfix _single_10

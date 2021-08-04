@@ -1,0 +1,5 @@
+python main_collect_five_nj2.py --num_of_workers 9 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --transfer_all False --max_steps 2005000 --postfix _2_features_layer_no_hidden_transfer_collet_finetune_select_1 
+python main_collect_five_nj2.py --num_of_workers 9 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --transfer_all False --max_steps 2005000 --postfix _2_features_layer_no_hidden_transfer_collet_finetune_select_2 
+python main_collect_five_nj2.py --num_of_workers 9 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --transfer_all False --max_steps 2005000 --postfix _2_features_layer_no_hidden_transfer_collet_finetune_select_3 
+python main_collect_five_nj2.py --num_of_workers 9 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --transfer_all False --max_steps 2005000 --postfix _2_features_layer_no_hidden_transfer_collet_finetune_select_4 
+python main_collect_five_nj2.py --num_of_workers 9 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --transfer_all False --max_steps 2005000 --postfix _2_features_layer_no_hidden_transfer_collet_finetune_select_5 

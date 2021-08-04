@@ -1,0 +1,10 @@
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_11
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_12
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_13
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_14
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_15
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_16
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_17
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_18
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_19
+python main_nj_collect_and_destroy.py --version 3 --num_of_workers 7 --max_steps 2505000 --postfix _collect_and_destroy_air_scv_baseline_20

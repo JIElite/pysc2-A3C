@@ -1,0 +1,10 @@
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_11
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_12
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_13
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_14
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_15
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_16
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_17
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_18
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_19
+python main_collect_five_nj.py --num_of_workers 10 --version 4 --map CollectMineralShardsFiveExtendedVersion2 --gpu 1 --max_steps 2005000 --postfix _collect_five_v2_annealing_dropout_hidden_bn_20
