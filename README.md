@@ -13,7 +13,7 @@ Our experiments are based on StarCraftII 3.16, PySC2, Pytorch, and handcrafted m
 
 Please refer to the [GitHub page](https://github.com/deepmind/pysc2#get-starcraft-ii) of PySC2 to download and install StarCraftII 3.16.
 
-**NOTICE**: If you are using AMD CPUs, it may not be compatible with our repo. When I used AMD 5950X to install the StarCraftII 3.16 and our handcrafted mini-games, it didn't work.
+NOTICE: If you are using AMD CPUs, it may not be compatible with our repo. When I used AMD 5950X to install the StarCraftII 3.16 and our handcrafted mini-games, it didn't work.
 
 
 #### STEP2: Create a conda environment and install dependent packages
@@ -35,7 +35,7 @@ pip install pysc2==1.2
 pip install pygame==1.9.6 ## Please refer to the troubleshooting as follows for more information
 ```
 
-**TroubleShooting**: [pygame.error: Unable to make GL context current](https://github.com/deepmind/pysc2/issues/308)**
+TROUBLE SHOOTING: [pygame.error: Unable to make GL context current](https://github.com/deepmind/pysc2/issues/308)
 
 #### STEP3: Install the handcrafted mini-games
 
