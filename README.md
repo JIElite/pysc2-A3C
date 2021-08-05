@@ -1,5 +1,10 @@
 # Neural Grafting Network
 
+
+## DEMO
+https://www.youtube.com/watch?v=u-AF5hc8l-o
+
+
 ## Environment Setup
 
 Our experiments are based on StarCraftII 3.16, PySC2, Pytorch, and handcrafted mini-games. We highly recommend you install the package through conda.
@@ -49,8 +54,21 @@ python -m pysc2.bin.play --map
 
 ## Handcrafted Mini-Games
 
+```
+# TODO
+```
 
+## Train Reinforcement Learning Agent
 
+```
+# TODO
+```
+
+## Results
+
+```
+# TODO
+```
 
 ## Reference
 1. https://github.com/wing3s/pysc2-rl-mini
